@@ -10,7 +10,7 @@ typedef unsigned long uint64_t;
 #define DATA512Float_LOOP 16
 #define DATA512Double_LOOP 8
 #define NUM_CASE 20
-#define NUM_LOOP 10
+#define NUM_LOOP 100
 
 int32_t gCycleCount[NUM_CASE][NUM_LOOP];
 
@@ -95,14 +95,19 @@ void calc_coma_avx512_float(int32_t caseid, int32_t N)
     float *in_re  = (float *)calloc(MAX_NUM_COMA*MAX_NUM_COMA*2, sizeof(float));
     float *in_im  = (float *)calloc(MAX_NUM_COMA*MAX_NUM_COMA*2, sizeof(float));
 
+    uint64_t avg = 0;
     for (int32_t i=0;i<NUM_LOOP;i++)
     {
         uint64_t t1 = __rdtsc();
         coma(len,out_re,out_im,in_re,in_im);
         uint64_t t2 = __rdtsc();
         gCycleCount[caseid][i] = t2-t1;
+        avg += t2-t1;
     }
-    printf(" case %d: calc_coma_%d_avx512_float , end \n", caseid, N);
+
+    avg /= NUM_LOOP;
+    
+    printf(" case %d: calc_coma_%d_avx512_float, avg cycle=%lu\n", caseid, N, avg);
 
     free(out_re);
     free(out_im);
@@ -118,14 +123,17 @@ void calc_coma_avx512_double(int32_t caseid, int32_t N)
     double *in_re  = (double *)calloc(MAX_NUM_COMA*MAX_NUM_COMA*2, sizeof(double));
     double *in_im  = (double *)calloc(MAX_NUM_COMA*MAX_NUM_COMA*2, sizeof(double));
 
+    uint64_t avg = 0;
     for (int32_t i=0;i<NUM_LOOP;i++)
     {
         uint64_t t1 = __rdtsc();
         coma_double(len,out_re,out_im,in_re,in_im);
         uint64_t t2 = __rdtsc();
         gCycleCount[caseid][i] = t2-t1;
+        avg += t2-t1;
     }
-    printf(" case %d: calc_coma_%d_avx512_double , end \n", caseid, N);
+    avg /= NUM_LOOP;
+    printf(" case %d: calc_coma_%d_avx512_double, avg cycle=%lu\n", caseid, N, avg);
 
     free(out_re);
     free(out_im);
@@ -200,6 +208,7 @@ void calc_kron_avx512_float(int32_t caseid, int32_t N)
     float *in_re2  = (float *)calloc(MAX_NUM_COMA*MAX_NUM_COMA*2, sizeof(float));
     float *in_im2  = (float *)calloc(MAX_NUM_COMA*MAX_NUM_COMA*2, sizeof(float));
 
+    uint64_t avg = 0;
     for (int32_t i=0;i<NUM_LOOP;i++)
     {
         uint64_t t1 = __rdtsc();
@@ -223,8 +232,10 @@ void calc_kron_avx512_float(int32_t caseid, int32_t N)
         }
         uint64_t t2 = __rdtsc();
         gCycleCount[caseid][i] = t2-t1;
+        avg += t2-t1;
     }
-    printf(" case %d: calc_kron_%d_avx512_float , end \n", caseid, N);
+    avg /= NUM_LOOP;
+    printf(" case %d: calc_kron_%d_avx512_float, avg cycle=%lu\n", caseid, N, avg);
 
     free(out_re);
     free(out_im);
