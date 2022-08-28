@@ -6,14 +6,11 @@ typedef int int32_t;
 typedef unsigned int uint32_t;
 typedef unsigned long uint64_t;
 
-#define MAX_NUM_COMA        64*64
-#define MAX_SIZE            MAX_NUM_COMA*2
+#define MAX_SIZE            64*64
 #define DATA512Float_LOOP   16
 #define DATA512Double_LOOP  8
 #define NUM_CASE            25
 #define NUM_LOOP            1000
-#define MASK_16_H0          0xFF00
-#define MASK_16_H1          0x00FF
 
 int32_t gCycleCount[NUM_CASE][NUM_LOOP];
 double gResistO3[NUM_CASE][NUM_LOOP];
@@ -54,7 +51,7 @@ void vec_single_mul512_conj_double(double single_value_re,double single_value_im
     __m512d single_vec_re = _mm512_set1_pd(single_value_re);
     __m512d single_vec_im = _mm512_set1_pd(single_value_im);
     
-    if (len <= DATA512Float_LOOP)
+    if (len <= DATA512Double_LOOP)
     {
         __m512d re = _mm512_add_pd(_mm512_mul_pd(single_vec_re,_mm512_load_pd(input_vec_re)),_mm512_mul_pd(single_vec_im,_mm512_load_pd(input_vec_im)));
         __m512d im = _mm512_sub_pd(_mm512_mul_pd(single_vec_re,_mm512_load_pd(input_vec_im)),_mm512_mul_pd(single_vec_im,_mm512_load_pd(input_vec_re)));
@@ -100,11 +97,6 @@ void coma_double(int32_t len, double* out_re,double* out_im,double* in_re,double
     }
 }
 
-/*float out_re[MAX_SIZE] = {0};
-float out_im[MAX_SIZE] = {0};
-float in_re[MAX_SIZE]  = {0};
-float in_im[MAX_SIZE]  = {0};*/
-
 void calc_coma_avx512_float(int32_t caseid, int32_t N)
 {   
     float out_re[MAX_SIZE] = {0};
@@ -117,8 +109,8 @@ void calc_coma_avx512_float(int32_t caseid, int32_t N)
     {
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
-            out_re[k] = k + i + 10;
-            out_im[k] = k + i + 20;
+            //out_re[k] = k + i + 10;
+            //out_im[k] = k + i + 20;
             in_re[k]  = k + i + 30;
             in_im[k]  = k + i + 40;
         }
@@ -129,7 +121,7 @@ void calc_coma_avx512_float(int32_t caseid, int32_t N)
 
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
-            gResistO3[caseid][i] = out_re[k] - out_im[k] + in_re[k] - in_im[k] + gResistO3_1;
+            gResistO3[caseid][i] = out_re[k] + out_im[k] + gResistO3_1;
         }
         gCycleCount[caseid][i] = t2-t1;
         avg += t2-t1;
@@ -140,11 +132,6 @@ void calc_coma_avx512_float(int32_t caseid, int32_t N)
     printf(" case %d: calc_coma_%d_avx512_float, avg cycle=%lu\n", caseid, N, avg);
 
 }
-
-/*double out_re_d[MAX_SIZE] = {0};
-double out_im_d[MAX_SIZE] = {0};
-double in_re_d[MAX_SIZE]  = {0};
-double in_im_d[MAX_SIZE]  = {0};*/
 
 void calc_coma_avx512_double(int32_t caseid, int32_t N)
 {   
@@ -158,8 +145,8 @@ void calc_coma_avx512_double(int32_t caseid, int32_t N)
     {
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
-            out_re_d[k] = k + i + 10;
-            out_im_d[k] = k + i + 20;
+            //out_re_d[k] = k + i + 10;
+            //out_im_d[k] = k + i + 20;
             in_re_d[k]  = k + i + 30;
             in_im_d[k]  = k + i + 40;
         }
@@ -170,7 +157,7 @@ void calc_coma_avx512_double(int32_t caseid, int32_t N)
         
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
-            gResistO3[caseid][i] = out_re_d[k] - out_im_d[k] + in_re_d[k] - in_im_d[k] + gResistO3_1;
+            gResistO3[caseid][i] = out_re_d[k] + out_im_d[k] + gResistO3_1;
         }
         gCycleCount[caseid][i] = t2-t1;
         avg += t2-t1;
@@ -185,12 +172,16 @@ void kron(float* in_re1, float* in_im1,float* in_re2, float* in_im2, int32_t len
     len *= 2;
     if(len*2<=DATA512Float_LOOP)
     {
-        *(__m512*)(in_re2) = _mm512_maskz_load_ps((__mmask16)(MASK_16_H1),in_re1);
-        *(__m512*)(in_re2+2*len) = _mm512_maskz_load_ps((__mmask16)(MASK_16_H0),in_re1);
-        *(__m512*)(in_im2) = _mm512_maskz_load_ps((__mmask16)(MASK_16_H1),in_im1);
-        *(__m512*)(in_im2+2*len) = _mm512_maskz_load_ps((__mmask16)(MASK_16_H0),in_im1);
-        
-        gResistO3_2 += *in_re2 + *(in_re2+2*len) + *in_im2 + *(in_im2+2*len);
+        *(__m512*)(in_re2) = _mm512_load_ps(in_re1);
+        *(__m512*)(in_re2+len) = _mm512_setzero_ps();
+        *(__m512*)(in_re2+2*len) = _mm512_setzero_ps();
+        *(__m512*)(in_re2+3*len) = _mm512_load_ps(in_re1);
+        *(__m512*)(in_im2) = _mm512_load_ps(in_im1);
+        *(__m512*)(in_im2+len) = _mm512_setzero_ps();
+        *(__m512*)(in_im2+2*len) = _mm512_setzero_ps();
+        *(__m512*)(in_im2+3*len) = _mm512_load_ps(in_im1);
+        gResistO3_2 += *(in_re2) + *(in_re2+3*len) + 
+                       *(in_im2) + *(in_im2+3*len);
     }
     else
     {
@@ -245,11 +236,6 @@ void kron_double(double* in_re1, double* in_im1,double* in_re2, double* in_im2, 
     }
 }
 
-/*float in_re1[MAX_SIZE] = {0};
-float in_im1[MAX_SIZE] = {0};
-float in_re2[MAX_SIZE] = {0};
-float in_im2[MAX_SIZE] = {0};*/
-
 void calc_kron_avx512_float(int32_t caseid, int32_t N)
 {   
     float in_re1[MAX_SIZE] = {0};
@@ -264,8 +250,8 @@ void calc_kron_avx512_float(int32_t caseid, int32_t N)
         {
             in_re1[k] = k + i + 10;
             in_im1[k] = k + i + 20;
-            in_re2[k] = k + i + 30;
-            in_im2[k] = k + i + 40;
+            //in_re2[k] = k + i + 30;
+            //in_im2[k] = k + i + 40;
         }
         
         uint64_t t1 = __rdtsc();
@@ -274,11 +260,7 @@ void calc_kron_avx512_float(int32_t caseid, int32_t N)
         
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
-            in_re1[k] += 1;
-            in_im1[k] += 2;
-            in_re2[k] += 3;
-            in_im2[k] += 4;
-            gResistO3[caseid][i] = in_re2[k] - in_im2[k] + in_re1[k] - in_im1[k] + gResistO3_2;
+            gResistO3[caseid][i] = in_re2[k] + in_im2[k] + gResistO3_2;
         }
         gCycleCount[caseid][i] = t2-t1;
         avg += t2-t1;
@@ -287,11 +269,6 @@ void calc_kron_avx512_float(int32_t caseid, int32_t N)
     printf(" case %d: calc_kron_%d_avx512_float, avg cycle=%lu\n", caseid, N, avg);
 
 }
-
-/*double in_re1_d[MAX_SIZE] = {0};
-double in_im1_d[MAX_SIZE] = {0};
-double in_re2_d[MAX_SIZE] = {0};
-double in_im2_d[MAX_SIZE] = {0};*/
 
 void calc_kron_avx512_double(int32_t caseid, int32_t N)
 {   
@@ -307,8 +284,8 @@ void calc_kron_avx512_double(int32_t caseid, int32_t N)
         {
             in_re1_d[k] = k + i + 10;
             in_im1_d[k] = k + i + 20;
-            in_re2_d[k] = k + i + 30;
-            in_im2_d[k] = k + i + 40;
+            //in_re2_d[k] = k + i + 30;
+            //in_im2_d[k] = k + i + 40;
         }
         
         uint64_t t1 = __rdtsc();
@@ -317,11 +294,7 @@ void calc_kron_avx512_double(int32_t caseid, int32_t N)
         
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
-            in_re1_d[k] += 1;
-            in_im1_d[k] += 2;
-            in_re2_d[k] += 3;
-            in_im2_d[k] += 4;
-            gResistO3[caseid][i] = in_re2_d[k] - in_im2_d[k] + in_re1_d[k] - in_im1_d[k] + gResistO3_2;
+            gResistO3[caseid][i] = in_re2_d[k] + in_im2_d[k] + gResistO3_2;
         }
         gCycleCount[caseid][i] = t2-t1;
         avg += t2-t1;
@@ -419,13 +392,7 @@ void calc_coma_avg_avx512_float(int32_t caseid, int32_t N)
         
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
-            in_re1[k] += 1;
-            in_im1[k] += 2;
-            in_re2[k] += 3;
-            in_im2[k] += 4;
-            out_re[k] += 5;
-            out_im[k] += 6;
-            gResistO3[caseid][i] = in_re2[k] - in_im2[k] + in_re1[k] - in_im1[k] + out_re[i] + out_im[i] + gResistO3_3;
+            gResistO3[caseid][i] = out_re[i] + out_im[i] + gResistO3_3;
         }
         gCycleCount[caseid][i] = t2-t1;
         avg += t2-t1;
@@ -466,13 +433,7 @@ void calc_coma_avg_avx512_double(int32_t caseid, int32_t N)
         
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
-            in_re1_d[k] += 1;
-            in_im1_d[k] += 2;
-            in_re2_d[k] += 3;
-            in_im2_d[k] += 4;
-            out_re_d[k] += 5;
-            out_im_d[k] += 6;
-            gResistO3[caseid][i] = in_re2_d[k] - in_im2_d[k] + in_re1_d[k] - in_im1_d[k] + out_re_d[i] + out_im_d[i] + gResistO3_3;
+            gResistO3[caseid][i] = out_re_d[i] + out_im_d[i] + gResistO3_3;
         }
         gCycleCount[caseid][i] = t2-t1;
         avg += t2-t1;
