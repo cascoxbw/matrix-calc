@@ -3,7 +3,7 @@
 #include <string.h>
 #include <algorithm>    // std::sort
 #include <vector>       // std::vector
-#include<numeric>       // std::accumulate
+#include <numeric>      // std::accumulate
 
 
 typedef int int32_t;
@@ -35,7 +35,7 @@ void display(int32_t caseid)
     auto minPosition = min_element(v0.begin(), v0.end());
     
     
-    printf(" case %d: cycle avg=%d, cycle max=%d, cycle min=%d\n", caseid, avg, *maxPosition, *minPosition);
+    printf(" case %d: cycle total=%d, loop num=%zu, cycle avg=%d, cycle max=%d, cycle min=%d\n", caseid, sum, v0.size(), avg, *maxPosition, *minPosition);
 }
 
 void vec_single_mul512_conj(float single_value_re,float single_value_im, float* input_vec_re,float* input_vec_im, float* output_vec_re, float* output_vec_im, int32_t len)
@@ -123,7 +123,6 @@ void calc_coma_avx512_float(int32_t caseid, int32_t N)
     float in_re[MAX_SIZE]  = {0};
     float in_im[MAX_SIZE]  = {0};
 
-    uint64_t avg = 0;
     for (int32_t i=0;i<NUM_LOOP;i++)
     {
         int32_t ran = rand()%50;
@@ -136,18 +135,15 @@ void calc_coma_avx512_float(int32_t caseid, int32_t N)
         uint64_t t1 = __rdtsc();
         coma(N,out_re,out_im,in_re,in_im);
         uint64_t t2 = __rdtsc();
+        gCycleCount[caseid][i] = t2-t1;
 
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
             gResistO3[caseid][i] = out_re[k]/NUM_LOOP + out_im[k]/NUM_LOOP + gResistO3_1/NUM_LOOP;
         }
-        gCycleCount[caseid][i] = t2-t1;
-        avg += t2-t1;
     }
-
-    //avg /= NUM_LOOP;
     
-    printf(" case %d: calc_coma_%d_avx512_float, cycle total=%lu\n", caseid, N, avg);
+    printf(" case %d: calc_coma_%d_avx512_float\n", caseid, N);
     display(caseid);
 }
 
@@ -158,7 +154,6 @@ void calc_coma_avx512_double(int32_t caseid, int32_t N)
     double in_re_d[MAX_SIZE]  = {0};
     double in_im_d[MAX_SIZE]  = {0};
 
-    uint64_t avg = 0;
     for (int32_t i=0;i<NUM_LOOP;i++)
     {
         int32_t ran = rand()%50;
@@ -171,16 +166,15 @@ void calc_coma_avx512_double(int32_t caseid, int32_t N)
         uint64_t t1 = __rdtsc();
         coma_double(N,out_re_d,out_im_d,in_re_d,in_im_d);
         uint64_t t2 = __rdtsc();
+        gCycleCount[caseid][i] = t2-t1;
         
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
             gResistO3[caseid][i] = out_re_d[k]/NUM_LOOP + out_im_d[k]/NUM_LOOP + gResistO3_1/NUM_LOOP;
         }
-        gCycleCount[caseid][i] = t2-t1;
-        avg += t2-t1;
     }
-    //avg /= NUM_LOOP;
-    printf(" case %d: calc_coma_%d_avx512_double, cycle total=%lu\n", caseid, N, avg);
+
+    printf(" case %d: calc_coma_%d_avx512_double\n", caseid, N);
     display(caseid);
 
 }
@@ -261,7 +255,6 @@ void calc_kron_avx512_float(int32_t caseid, int32_t N)
     float in_re2[MAX_SIZE] = {0};
     float in_im2[MAX_SIZE] = {0};
 
-    uint64_t avg = 0;
     for (int32_t i=0;i<NUM_LOOP;i++)
     {
         int32_t ran = rand()%50;
@@ -274,16 +267,15 @@ void calc_kron_avx512_float(int32_t caseid, int32_t N)
         uint64_t t1 = __rdtsc();
         kron(in_re1, in_im1, in_re2, in_im2, N);
         uint64_t t2 = __rdtsc();
+        gCycleCount[caseid][i] = t2-t1;
         
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
             gResistO3[caseid][i] = in_re2[k]/NUM_LOOP + in_im2[k]/NUM_LOOP + gResistO3_2/NUM_LOOP;
         }
-        gCycleCount[caseid][i] = t2-t1;
-        avg += t2-t1;
     }
-    //avg /= NUM_LOOP;
-    printf(" case %d: calc_kron_%d_avx512_float, cycle total=%lu\n", caseid, N, avg);
+
+    printf(" case %d: calc_kron_%d_avx512_float\n", caseid, N);
     display(caseid);
 
 }
@@ -295,7 +287,6 @@ void calc_kron_avx512_double(int32_t caseid, int32_t N)
     double in_re2_d[MAX_SIZE] = {0};
     double in_im2_d[MAX_SIZE] = {0};
 
-    uint64_t avg = 0;
     for (int32_t i=0;i<NUM_LOOP;i++)
     {
         int32_t ran = rand()%50;
@@ -308,16 +299,15 @@ void calc_kron_avx512_double(int32_t caseid, int32_t N)
         uint64_t t1 = __rdtsc();
         kron_double(in_re1_d, in_im1_d, in_re2_d, in_im2_d, N);
         uint64_t t2 = __rdtsc();
+        gCycleCount[caseid][i] = t2-t1;
         
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
             gResistO3[caseid][i] = in_re2_d[k]/NUM_LOOP + in_im2_d[k]/NUM_LOOP + gResistO3_2/NUM_LOOP;
         }
-        gCycleCount[caseid][i] = t2-t1;
-        avg += t2-t1;
     }
-    //avg /= NUM_LOOP;
-    printf(" case %d: calc_kron_%d_avx512_double, cycle total=%lu\n", caseid, N, avg);
+
+    printf(" case %d: calc_kron_%d_avx512_double\n", caseid, N);
     display(caseid);
 
 }
@@ -390,7 +380,6 @@ void calc_coma_avg_avx512_float(int32_t caseid, int32_t N)
     float r1 = 0;
     float r2 = 0;
     
-    uint64_t avg = 0;
     for (int32_t i=0;i<NUM_LOOP;i++)
     {
         int32_t ran = rand()%50;
@@ -408,16 +397,15 @@ void calc_coma_avg_avx512_float(int32_t caseid, int32_t N)
         uint64_t t1 = __rdtsc();
         coma_avg(N, out_re, out_im, in_re1, in_im1, in_re2, in_im2, r1, r2);
         uint64_t t2 = __rdtsc();
+        gCycleCount[caseid][i] = t2-t1;
         
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
             gResistO3[caseid][i] = out_re[i]/NUM_LOOP + out_im[i]/NUM_LOOP + gResistO3_3/NUM_LOOP;
         }
-        gCycleCount[caseid][i] = t2-t1;
-        avg += t2-t1;
     }
-    //avg /= NUM_LOOP;
-    printf(" case %d: calc_coma_avg_%d_avx512_float, cycle total=%lu\n", caseid, N, avg);
+
+    printf(" case %d: calc_coma_avg_%d_avx512_float\n", caseid, N);
     display(caseid);
 
 }    
@@ -433,7 +421,6 @@ void calc_coma_avg_avx512_double(int32_t caseid, int32_t N)
     double r1 = 0;
     double r2 = 0;
     
-    uint64_t avg = 0;
     for (int32_t i=0;i<NUM_LOOP;i++)
     {
         int32_t ran = rand()%50;
@@ -451,25 +438,24 @@ void calc_coma_avg_avx512_double(int32_t caseid, int32_t N)
         uint64_t t1 = __rdtsc();
         coma_avg_double(N, out_re_d, out_im_d, in_re1_d, in_im1_d, in_re2_d, in_im2_d, r1, r2);
         uint64_t t2 = __rdtsc();
+        gCycleCount[caseid][i] = t2-t1;
         
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
             //gResistO3[caseid][i] = out_re_d[i]/NUM_LOOP + out_im_d[i]/NUM_LOOP + gResistO3_3/NUM_LOOP;
         }
-        gCycleCount[caseid][i] = t2-t1;
-        avg += t2-t1;
     }
-    //avg /= NUM_LOOP;
-    printf(" case %d: calc_coma_avg_%d_avx512_double, cycle total=%lu\n", caseid, N, avg);
+
+    printf(" case %d: calc_coma_avg_%d_avx512_double\n", caseid, N);
     display(caseid);
 
 }
 
 int main(int argc, char *argv[])
 {
-    printf("****************************\n");
+    printf("********************************************************\n");
     printf(" case start \n");
-    printf("****************************\n");
+    printf("********************************************************\n");
 
     memset(gCycleCount, 0, sizeof(int32_t) * NUM_CASE * NUM_LOOP);
     
@@ -477,31 +463,31 @@ int main(int argc, char *argv[])
     calc_coma_avx512_float(1, 8);
     calc_coma_avx512_float(2, 32);
     calc_coma_avx512_float(3, 64);
-    printf("****************************\n");
+    printf("********************************************************\n");
 
     calc_coma_avx512_double(4, 4);
     calc_coma_avx512_double(5, 8);
     calc_coma_avx512_double(6, 32);
     calc_coma_avx512_double(7, 64);
-    printf("****************************\n");
+    printf("********************************************************\n");
 
     calc_kron_avx512_float(8, 4);
     calc_kron_avx512_float(9, 8);
     calc_kron_avx512_float(10, 32);
     calc_kron_avx512_float(11, 64);
-    printf("****************************\n");
+    printf("********************************************************\n");
         
     calc_kron_avx512_double(12, 4);
     calc_kron_avx512_double(13, 8);
     calc_kron_avx512_double(14, 32);
     calc_kron_avx512_double(15, 64);
-    printf("****************************\n");
+    printf("********************************************************\n");
     
     calc_coma_avg_avx512_float(16, 4);
     calc_coma_avg_avx512_float(17, 8);
     calc_coma_avg_avx512_float(18, 32);
     calc_coma_avg_avx512_float(19, 64);
-    printf("****************************\n");
+    printf("********************************************************\n");
 
     calc_coma_avg_avx512_double(20, 4);
     calc_coma_avg_avx512_double(21, 8);
@@ -509,9 +495,9 @@ int main(int argc, char *argv[])
     calc_coma_avg_avx512_double(23, 64);
     
     gResistO3_4 = gResistO3_1 + gResistO3_2 + gResistO3_3;
-    printf("****************************\n");
+    printf("********************************************************\n");
     printf(" case end \n");
-    printf("****************************%f\n",gResistO3_4);
+    printf("********************************************************%f\n",gResistO3_4);
 
     return 0;
 }
