@@ -126,12 +126,11 @@ void calc_coma_avx512_float(int32_t caseid, int32_t N)
     uint64_t avg = 0;
     for (int32_t i=0;i<NUM_LOOP;i++)
     {
+        int32_t ran = rand()%50;
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
-            //out_re[k] = k + i + 10;
-            //out_im[k] = k + i + 20;
-            in_re[k]  = k + i + 30;
-            in_im[k]  = k + i + 40;
+            in_re[k]  = k + i + ran;
+            in_im[k]  = k + i + ran;
         }
         
         uint64_t t1 = __rdtsc();
@@ -140,7 +139,7 @@ void calc_coma_avx512_float(int32_t caseid, int32_t N)
 
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
-            gResistO3[caseid][i] = out_re[k] + out_im[k] + gResistO3_1;
+            gResistO3[caseid][i] = out_re[k]/NUM_LOOP + out_im[k]/NUM_LOOP + gResistO3_1/NUM_LOOP;
         }
         gCycleCount[caseid][i] = t2-t1;
         avg += t2-t1;
@@ -162,12 +161,11 @@ void calc_coma_avx512_double(int32_t caseid, int32_t N)
     uint64_t avg = 0;
     for (int32_t i=0;i<NUM_LOOP;i++)
     {
+        int32_t ran = rand()%50;
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
-            //out_re_d[k] = k + i + 10;
-            //out_im_d[k] = k + i + 20;
-            in_re_d[k]  = k + i + 30;
-            in_im_d[k]  = k + i + 40;
+            in_re_d[k]  = k + i + ran;
+            in_im_d[k]  = k + i + ran;
         }
         
         uint64_t t1 = __rdtsc();
@@ -176,7 +174,7 @@ void calc_coma_avx512_double(int32_t caseid, int32_t N)
         
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
-            gResistO3[caseid][i] = out_re_d[k] + out_im_d[k] + gResistO3_1;
+            gResistO3[caseid][i] = out_re_d[k]/NUM_LOOP + out_im_d[k]/NUM_LOOP + gResistO3_1/NUM_LOOP;
         }
         gCycleCount[caseid][i] = t2-t1;
         avg += t2-t1;
@@ -266,12 +264,11 @@ void calc_kron_avx512_float(int32_t caseid, int32_t N)
     uint64_t avg = 0;
     for (int32_t i=0;i<NUM_LOOP;i++)
     {
+        int32_t ran = rand()%50;
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
-            in_re1[k] = k + i + 10;
-            in_im1[k] = k + i + 20;
-            //in_re2[k] = k + i + 30;
-            //in_im2[k] = k + i + 40;
+            in_re1[k] = k + i + ran;
+            in_im1[k] = k + i + ran;
         }
         
         uint64_t t1 = __rdtsc();
@@ -280,7 +277,7 @@ void calc_kron_avx512_float(int32_t caseid, int32_t N)
         
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
-            gResistO3[caseid][i] = in_re2[k] + in_im2[k] + gResistO3_2;
+            gResistO3[caseid][i] = in_re2[k]/NUM_LOOP + in_im2[k]/NUM_LOOP + gResistO3_2/NUM_LOOP;
         }
         gCycleCount[caseid][i] = t2-t1;
         avg += t2-t1;
@@ -301,12 +298,11 @@ void calc_kron_avx512_double(int32_t caseid, int32_t N)
     uint64_t avg = 0;
     for (int32_t i=0;i<NUM_LOOP;i++)
     {
+        int32_t ran = rand()%50;
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
-            in_re1_d[k] = k + i + 10;
-            in_im1_d[k] = k + i + 20;
-            //in_re2_d[k] = k + i + 30;
-            //in_im2_d[k] = k + i + 40;
+            in_re1_d[k] = k + i + ran;
+            in_im1_d[k] = k + i + ran;
         }
         
         uint64_t t1 = __rdtsc();
@@ -315,7 +311,7 @@ void calc_kron_avx512_double(int32_t caseid, int32_t N)
         
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
-            gResistO3[caseid][i] = in_re2_d[k] + in_im2_d[k] + gResistO3_2;
+            gResistO3[caseid][i] = in_re2_d[k]/NUM_LOOP + in_im2_d[k]/NUM_LOOP + gResistO3_2/NUM_LOOP;
         }
         gCycleCount[caseid][i] = t2-t1;
         avg += t2-t1;
@@ -397,12 +393,13 @@ void calc_coma_avg_avx512_float(int32_t caseid, int32_t N)
     uint64_t avg = 0;
     for (int32_t i=0;i<NUM_LOOP;i++)
     {
+        int32_t ran = rand()%50;
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
-            in_re1[k] = k + i + 10;
-            in_im1[k] = k + i + 20;
-            in_re2[k] = k + i + 30;
-            in_im2[k] = k + i + 40;
+            in_re1[k] = k + i + ran;
+            in_im1[k] = k + i + ran;
+            in_re2[k] = k + i + ran;
+            in_im2[k] = k + i + ran;
         }
         
         r1 = i;
@@ -414,7 +411,7 @@ void calc_coma_avg_avx512_float(int32_t caseid, int32_t N)
         
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
-            gResistO3[caseid][i] = out_re[i] + out_im[i] + gResistO3_3;
+            gResistO3[caseid][i] = out_re[i]/NUM_LOOP + out_im[i]/NUM_LOOP + gResistO3_3/NUM_LOOP;
         }
         gCycleCount[caseid][i] = t2-t1;
         avg += t2-t1;
@@ -439,12 +436,13 @@ void calc_coma_avg_avx512_double(int32_t caseid, int32_t N)
     uint64_t avg = 0;
     for (int32_t i=0;i<NUM_LOOP;i++)
     {
+        int32_t ran = rand()%50;
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
-            in_re1_d[k] = k + i + 10;
-            in_im1_d[k] = k + i + 20;
-            in_re2_d[k] = k + i + 30;
-            in_im2_d[k] = k + i + 40;
+            in_re1_d[k] = k + i + ran;
+            in_im1_d[k] = k + i + ran;
+            in_re2_d[k] = k + i + ran;
+            in_im2_d[k] = k + i + ran;
         }
         
         r1 = i;
@@ -456,7 +454,7 @@ void calc_coma_avg_avx512_double(int32_t caseid, int32_t N)
         
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
-            gResistO3[caseid][i] = out_re_d[i] + out_im_d[i] + gResistO3_3;
+            //gResistO3[caseid][i] = out_re_d[i]/NUM_LOOP + out_im_d[i]/NUM_LOOP + gResistO3_3/NUM_LOOP;
         }
         gCycleCount[caseid][i] = t2-t1;
         avg += t2-t1;
