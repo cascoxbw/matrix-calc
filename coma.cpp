@@ -1,6 +1,10 @@
 #include <stdio.h>
 #include <immintrin.h>
 #include <string.h>
+#include <algorithm>    // std::sort
+#include <vector>       // std::vector
+#include<numeric>       // std::accumulate
+
 
 typedef int int32_t;
 typedef unsigned int uint32_t;
@@ -10,7 +14,7 @@ typedef unsigned long uint64_t;
 #define DATA512Float_LOOP   16
 #define DATA512Double_LOOP  8
 #define NUM_CASE            25
-#define NUM_LOOP            1000
+#define NUM_LOOP            10000
 
 int32_t gCycleCount[NUM_CASE][NUM_LOOP];
 double gResistO3[NUM_CASE][NUM_LOOP];
@@ -18,6 +22,21 @@ double gResistO3_1 = 0;
 double gResistO3_2 = 0;
 double gResistO3_3 = 0;
 double gResistO3_4 = 0;
+
+void display(int32_t caseid)
+{
+    std::vector<int32_t> v0(gCycleCount[caseid],gCycleCount[caseid]+NUM_LOOP);
+    std::sort(v0.begin(), v0.end());
+    
+    int32_t sum = std::accumulate(v0.begin(), v0.end(), 0);  
+    int32_t avg =  sum / v0.size(); 
+
+    auto maxPosition = max_element(v0.begin(), v0.end());
+    auto minPosition = min_element(v0.begin(), v0.end());
+    
+    
+    printf(" case %d: cycle avg=%d, cycle max=%d, cycle min=%d\n", caseid, avg, *maxPosition, *minPosition);
+}
 
 void vec_single_mul512_conj(float single_value_re,float single_value_im, float* input_vec_re,float* input_vec_im, float* output_vec_re, float* output_vec_im, int32_t len)
 {
@@ -129,8 +148,8 @@ void calc_coma_avx512_float(int32_t caseid, int32_t N)
 
     //avg /= NUM_LOOP;
     
-    printf(" case %d: calc_coma_%d_avx512_float, avg cycle=%lu\n", caseid, N, avg);
-
+    printf(" case %d: calc_coma_%d_avx512_float, cycle total=%lu\n", caseid, N, avg);
+    display(caseid);
 }
 
 void calc_coma_avx512_double(int32_t caseid, int32_t N)
@@ -163,7 +182,8 @@ void calc_coma_avx512_double(int32_t caseid, int32_t N)
         avg += t2-t1;
     }
     //avg /= NUM_LOOP;
-    printf(" case %d: calc_coma_%d_avx512_double, avg cycle=%lu\n", caseid, N, avg);
+    printf(" case %d: calc_coma_%d_avx512_double, cycle total=%lu\n", caseid, N, avg);
+    display(caseid);
 
 }
 
@@ -266,7 +286,8 @@ void calc_kron_avx512_float(int32_t caseid, int32_t N)
         avg += t2-t1;
     }
     //avg /= NUM_LOOP;
-    printf(" case %d: calc_kron_%d_avx512_float, avg cycle=%lu\n", caseid, N, avg);
+    printf(" case %d: calc_kron_%d_avx512_float, cycle total=%lu\n", caseid, N, avg);
+    display(caseid);
 
 }
 
@@ -300,7 +321,8 @@ void calc_kron_avx512_double(int32_t caseid, int32_t N)
         avg += t2-t1;
     }
     //avg /= NUM_LOOP;
-    printf(" case %d: calc_kron_%d_avx512_double, avg cycle=%lu\n", caseid, N, avg);
+    printf(" case %d: calc_kron_%d_avx512_double, cycle total=%lu\n", caseid, N, avg);
+    display(caseid);
 
 }
 
@@ -398,7 +420,8 @@ void calc_coma_avg_avx512_float(int32_t caseid, int32_t N)
         avg += t2-t1;
     }
     //avg /= NUM_LOOP;
-    printf(" case %d: calc_coma_avg_%d_avx512_float, avg cycle=%lu\n", caseid, N, avg);
+    printf(" case %d: calc_coma_avg_%d_avx512_float, cycle total=%lu\n", caseid, N, avg);
+    display(caseid);
 
 }    
 
@@ -439,7 +462,8 @@ void calc_coma_avg_avx512_double(int32_t caseid, int32_t N)
         avg += t2-t1;
     }
     //avg /= NUM_LOOP;
-    printf(" case %d: calc_coma_avg_%d_avx512_double, avg cycle=%lu\n", caseid, N, avg);
+    printf(" case %d: calc_coma_avg_%d_avx512_double, cycle total=%lu\n", caseid, N, avg);
+    display(caseid);
 
 }
 
