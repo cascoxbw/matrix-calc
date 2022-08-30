@@ -4,6 +4,7 @@
 #include <algorithm>    // std::sort
 #include <vector>       // std::vector
 #include <numeric>      // std::accumulate
+#include <unistd.h>     // sleep
 
 
 typedef int int32_t;
@@ -35,7 +36,8 @@ void display(int32_t caseid)
     auto minPosition = min_element(v0.begin(), v0.end());
     
     
-    printf(" case %d: cycle total=%d, loop num=%zu, cycle avg=%d, cycle max=%d, cycle min=%d\n", caseid, sum, v0.size(), avg, *maxPosition, *minPosition);
+    printf(" case %d: cycle total=%d, loop num=%zu, cycle avg=%d, cycle 95=%d, cycle 99=%d, cycle 100=%d\n", caseid, sum, v0.size(), avg, v0[NUM_LOOP*0.95], v0[NUM_LOOP*0.99], v0[NUM_LOOP*0.999]);
+    //sleep(5);
 }
 
 void vec_single_mul512_conj(float single_value_re,float single_value_im, float* input_vec_re,float* input_vec_im, float* output_vec_re, float* output_vec_im, int32_t len)
@@ -99,7 +101,7 @@ void coma(int32_t len, float* out_re,float* out_im,float* in_re,float* in_im)
     for(int32_t i = 0; i < len; i++)
     {
         vec_single_mul512_conj(*(re+i),*(im+i),re,im,coma_re+i*len,coma_im+i*len,len);
-        gResistO3_1 += *(re+i) + *(im+i) + *re + *im + *coma_re + *coma_im;
+        gResistO3_1 += *(coma_re+i*len) + *(coma_im+i*len);
     }
 }
 
@@ -112,7 +114,7 @@ void coma_double(int32_t len, double* out_re,double* out_im,double* in_re,double
     for(int32_t i = 0; i < len; i++)
     {
         vec_single_mul512_conj_double(*(re+i),*(im+i),re,im,coma_re+i*len,coma_im+i*len,len);
-        gResistO3_1 += *(re+i) + *(im+i) + *re + *im + *coma_re + *coma_im;
+        gResistO3_1 += *(coma_re+i*len) + *(coma_im+i*len);
     }
 }
 
@@ -137,10 +139,6 @@ void calc_coma_avx512_float(int32_t caseid, int32_t N)
         uint64_t t2 = __rdtsc();
         gCycleCount[caseid][i] = t2-t1;
 
-        for (int32_t k=0;k<MAX_SIZE;k++)
-        {
-            gResistO3[caseid][i] = out_re[k]/NUM_LOOP + out_im[k]/NUM_LOOP + gResistO3_1/NUM_LOOP;
-        }
     }
     
     printf(" case %d: calc_coma_%d_avx512_float\n", caseid, N);
@@ -168,10 +166,6 @@ void calc_coma_avx512_double(int32_t caseid, int32_t N)
         uint64_t t2 = __rdtsc();
         gCycleCount[caseid][i] = t2-t1;
         
-        for (int32_t k=0;k<MAX_SIZE;k++)
-        {
-            gResistO3[caseid][i] = out_re_d[k]/NUM_LOOP + out_im_d[k]/NUM_LOOP + gResistO3_1/NUM_LOOP;
-        }
     }
 
     printf(" case %d: calc_coma_%d_avx512_double\n", caseid, N);
@@ -182,7 +176,7 @@ void calc_coma_avx512_double(int32_t caseid, int32_t N)
 void kron(float* in_re1, float* in_im1,float* in_re2, float* in_im2, int32_t len)
 {
     len *= 2;
-    if(len*2<=DATA512Float_LOOP)
+    if(len*2<=DATA512Float_LOOP) //len==4
     {
         *(__m512*)(in_re2) = _mm512_load_ps(in_re1);
         *(__m512*)(in_re2+len) = _mm512_setzero_ps();
@@ -269,10 +263,6 @@ void calc_kron_avx512_float(int32_t caseid, int32_t N)
         uint64_t t2 = __rdtsc();
         gCycleCount[caseid][i] = t2-t1;
         
-        for (int32_t k=0;k<MAX_SIZE;k++)
-        {
-            gResistO3[caseid][i] = in_re2[k]/NUM_LOOP + in_im2[k]/NUM_LOOP + gResistO3_2/NUM_LOOP;
-        }
     }
 
     printf(" case %d: calc_kron_%d_avx512_float\n", caseid, N);
@@ -301,10 +291,6 @@ void calc_kron_avx512_double(int32_t caseid, int32_t N)
         uint64_t t2 = __rdtsc();
         gCycleCount[caseid][i] = t2-t1;
         
-        for (int32_t k=0;k<MAX_SIZE;k++)
-        {
-            gResistO3[caseid][i] = in_re2_d[k]/NUM_LOOP + in_im2_d[k]/NUM_LOOP + gResistO3_2/NUM_LOOP;
-        }
     }
 
     printf(" case %d: calc_kron_%d_avx512_double\n", caseid, N);
@@ -315,57 +301,33 @@ void calc_kron_avx512_double(int32_t caseid, int32_t N)
 void coma_avg(int32_t len, float* out_re,float* out_im,float* in_re1,float* in_im1,
                               float* in_re2,float* in_im2,float r1,float r2)
 {
-    len *= 2;
-    if (len*2<= DATA512Float_LOOP)
+    int32_t loop = (len*len / DATA512Float_LOOP);
+   
+    for(int32_t i = 0; i < loop ; i++)
     {
-        __m512 re = _mm512_add_ps(_mm512_mul_ps(_mm512_set1_ps(r1),_mm512_load_ps(in_re1)),_mm512_mul_ps(_mm512_set1_ps(r2),_mm512_load_ps(in_re2)));
-        __m512 im = _mm512_add_ps(_mm512_mul_ps(_mm512_set1_ps(r1),_mm512_load_ps(in_im1)),_mm512_mul_ps(_mm512_set1_ps(r2),_mm512_load_ps(in_im2)));
-        *(__m512*)(out_re) = re;
-        *(__m512*)(out_im) = im;
-        gResistO3_3 += *(float*)(in_re1) + *(float*)(in_im1) + *(float*)(in_re2) + *(float*)(in_im2);
-    }
-    else
-    {
-        int32_t loop = len / DATA512Float_LOOP;
-        for(int32_t i = 0; i < loop ; i++)
-        {
-            __m512 re = _mm512_add_ps(_mm512_mul_ps(_mm512_set1_ps(r1),_mm512_load_ps(in_re1 + i * DATA512Float_LOOP)),_mm512_mul_ps(_mm512_set1_ps(r2),_mm512_load_ps(in_re2 + i * DATA512Float_LOOP)));
-            __m512 im = _mm512_add_ps(_mm512_mul_ps(_mm512_set1_ps(r1),_mm512_load_ps(in_im1 + i * DATA512Float_LOOP)),_mm512_mul_ps(_mm512_set1_ps(r2),_mm512_load_ps(in_im2 + i * DATA512Float_LOOP)));
-            *(__m512*)(out_re + i * DATA512Float_LOOP) = re;
-            *(__m512*)(out_im + i * DATA512Float_LOOP) = im;
-            gResistO3_3 += *(in_re1 + i * DATA512Float_LOOP) + *(in_im1 + i * DATA512Float_LOOP) + 
-                           *(in_re2 + i * DATA512Float_LOOP) + *(in_im2 + i * DATA512Float_LOOP) + 
-                           *(out_re + i * DATA512Float_LOOP) + *(out_im + i * DATA512Float_LOOP);
-        }
+        __m512 re = _mm512_add_ps(_mm512_mul_ps(_mm512_set1_ps(r1),_mm512_load_ps(in_re1 + i * DATA512Float_LOOP)),_mm512_mul_ps(_mm512_set1_ps(r2),_mm512_load_ps(in_re2 + i * DATA512Float_LOOP)));
+        __m512 im = _mm512_add_ps(_mm512_mul_ps(_mm512_set1_ps(r1),_mm512_load_ps(in_im1 + i * DATA512Float_LOOP)),_mm512_mul_ps(_mm512_set1_ps(r2),_mm512_load_ps(in_im2 + i * DATA512Float_LOOP)));
+        *(__m512*)(out_re + i * DATA512Float_LOOP) = re;
+        *(__m512*)(out_im + i * DATA512Float_LOOP) = im;
+        gResistO3_3 += *(in_re1 + i * DATA512Float_LOOP) + *(in_im1 + i * DATA512Float_LOOP) + 
+                       *(in_re2 + i * DATA512Float_LOOP) + *(in_im2 + i * DATA512Float_LOOP) + 
+                       *(out_re + i * DATA512Float_LOOP) + *(out_im + i * DATA512Float_LOOP);
     }
 }
                               
 void coma_avg_double(int32_t len, double* out_re,double* out_im,double* in_re1,double* in_im1,
                                        double* in_re2,double* in_im2,double r1,double r2)
 {
-    len *= 2;
-    /*if (len <= DATA512Double_LOOP)
+    int32_t loop = len*len / DATA512Double_LOOP;
+    for(int32_t i = 0; i < loop ; i++)
     {
-        __m512d re = _mm512_add_pd(_mm512_mul_pd(_mm512_set1_pd(r1),_mm512_load_pd(in_re1)),_mm512_mul_pd(_mm512_set1_pd(r2),_mm512_load_pd(in_re2)));
-        __m512d im = _mm512_add_pd(_mm512_mul_pd(_mm512_set1_pd(r1),_mm512_load_pd(in_im1)),_mm512_mul_pd(_mm512_set1_pd(r2),_mm512_load_pd(in_im2)));
-        *(__m512d*)(out_re) = re;
-        *(__m512d*)(out_im) = im;
-        
-        gResistO3_3 += *(double*)(in_re1) + *(double*)(in_im1) + *(double*)(in_re2) + *(double*)(in_im2);
-    }
-    else*/
-    {
-        int32_t loop = len / DATA512Double_LOOP;
-        for(int32_t i = 0; i < loop ; i++)
-        {
-            __m512d re = _mm512_add_pd(_mm512_mul_pd(_mm512_set1_pd(r1),_mm512_load_pd(in_re1 + i * DATA512Double_LOOP)),_mm512_mul_pd(_mm512_set1_pd(r2),_mm512_load_pd(in_re2 + i * DATA512Double_LOOP)));
-            __m512d im = _mm512_add_pd(_mm512_mul_pd(_mm512_set1_pd(r1),_mm512_load_pd(in_im1 + i * DATA512Double_LOOP)),_mm512_mul_pd(_mm512_set1_pd(r2),_mm512_load_pd(in_im2 + i * DATA512Double_LOOP)));
-            *(__m512d*)(out_re + i * DATA512Double_LOOP) = re;
-            *(__m512d*)(out_im + i * DATA512Double_LOOP) = im;
-            gResistO3_3 += *(in_re1 + i * DATA512Double_LOOP) + *(in_im1 + i * DATA512Double_LOOP) + 
-                           *(in_re2 + i * DATA512Double_LOOP) + *(in_im2 + i * DATA512Double_LOOP) + 
-                           *(out_re + i * DATA512Double_LOOP) + *(out_im + i * DATA512Double_LOOP);
-        }
+        __m512d re = _mm512_add_pd(_mm512_mul_pd(_mm512_set1_pd(r1),_mm512_load_pd(in_re1 + i * DATA512Double_LOOP)),_mm512_mul_pd(_mm512_set1_pd(r2),_mm512_load_pd(in_re2 + i * DATA512Double_LOOP)));
+        __m512d im = _mm512_add_pd(_mm512_mul_pd(_mm512_set1_pd(r1),_mm512_load_pd(in_im1 + i * DATA512Double_LOOP)),_mm512_mul_pd(_mm512_set1_pd(r2),_mm512_load_pd(in_im2 + i * DATA512Double_LOOP)));
+        *(__m512d*)(out_re + i * DATA512Double_LOOP) = re;
+        *(__m512d*)(out_im + i * DATA512Double_LOOP) = im;
+        gResistO3_3 += *(in_re1 + i * DATA512Double_LOOP) + *(in_im1 + i * DATA512Double_LOOP) + 
+                       *(in_re2 + i * DATA512Double_LOOP) + *(in_im2 + i * DATA512Double_LOOP) + 
+                       *(out_re + i * DATA512Double_LOOP) + *(out_im + i * DATA512Double_LOOP);
     }
 }
                                        
@@ -399,10 +361,6 @@ void calc_coma_avg_avx512_float(int32_t caseid, int32_t N)
         uint64_t t2 = __rdtsc();
         gCycleCount[caseid][i] = t2-t1;
         
-        for (int32_t k=0;k<MAX_SIZE;k++)
-        {
-            gResistO3[caseid][i] = out_re[i]/NUM_LOOP + out_im[i]/NUM_LOOP + gResistO3_3/NUM_LOOP;
-        }
     }
 
     printf(" case %d: calc_coma_avg_%d_avx512_float\n", caseid, N);
@@ -440,10 +398,6 @@ void calc_coma_avg_avx512_double(int32_t caseid, int32_t N)
         uint64_t t2 = __rdtsc();
         gCycleCount[caseid][i] = t2-t1;
         
-        for (int32_t k=0;k<MAX_SIZE;k++)
-        {
-            //gResistO3[caseid][i] = out_re_d[i]/NUM_LOOP + out_im_d[i]/NUM_LOOP + gResistO3_3/NUM_LOOP;
-        }
     }
 
     printf(" case %d: calc_coma_avg_%d_avx512_double\n", caseid, N);
@@ -453,9 +407,9 @@ void calc_coma_avg_avx512_double(int32_t caseid, int32_t N)
 
 int main(int argc, char *argv[])
 {
-    printf("********************************************************\n");
+    printf("**************************************************************************************************************\n");
     printf(" case start \n");
-    printf("********************************************************\n");
+    printf("**************************************************************************************************************\n");
 
     memset(gCycleCount, 0, sizeof(int32_t) * NUM_CASE * NUM_LOOP);
     
@@ -463,31 +417,31 @@ int main(int argc, char *argv[])
     calc_coma_avx512_float(1, 8);
     calc_coma_avx512_float(2, 32);
     calc_coma_avx512_float(3, 64);
-    printf("********************************************************\n");
+    printf("**************************************************************************************************************\n");
 
     calc_coma_avx512_double(4, 4);
     calc_coma_avx512_double(5, 8);
     calc_coma_avx512_double(6, 32);
     calc_coma_avx512_double(7, 64);
-    printf("********************************************************\n");
+    printf("**************************************************************************************************************\n");
 
     calc_kron_avx512_float(8, 4);
     calc_kron_avx512_float(9, 8);
     calc_kron_avx512_float(10, 32);
     calc_kron_avx512_float(11, 64);
-    printf("********************************************************\n");
+    printf("**************************************************************************************************************\n");
         
     calc_kron_avx512_double(12, 4);
     calc_kron_avx512_double(13, 8);
     calc_kron_avx512_double(14, 32);
     calc_kron_avx512_double(15, 64);
-    printf("********************************************************\n");
+    printf("**************************************************************************************************************\n");
     
     calc_coma_avg_avx512_float(16, 4);
     calc_coma_avg_avx512_float(17, 8);
     calc_coma_avg_avx512_float(18, 32);
     calc_coma_avg_avx512_float(19, 64);
-    printf("********************************************************\n");
+    printf("**************************************************************************************************************\n");
 
     calc_coma_avg_avx512_double(20, 4);
     calc_coma_avg_avx512_double(21, 8);
@@ -495,9 +449,9 @@ int main(int argc, char *argv[])
     calc_coma_avg_avx512_double(23, 64);
     
     gResistO3_4 = gResistO3_1 + gResistO3_2 + gResistO3_3;
-    printf("********************************************************\n");
+    printf("**************************************************************************************************************\n");
     printf(" case end \n");
-    printf("********************************************************%f\n",gResistO3_4);
+    printf("**************************************************************************************************************%f\n",gResistO3_4);
 
     return 0;
 }
