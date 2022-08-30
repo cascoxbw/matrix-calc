@@ -11,7 +11,7 @@ typedef int int32_t;
 typedef unsigned int uint32_t;
 typedef unsigned long uint64_t;
 
-#define MAX_SIZE            64*64
+#define MAX_SIZE            128*128
 #define DATA512Float_LOOP   16
 #define DATA512Double_LOOP  8
 #define NUM_CASE            25
@@ -175,69 +175,117 @@ void calc_coma_avx512_double(int32_t caseid, int32_t N)
 
 void kron(float* in_re1, float* in_im1,float* in_re2, float* in_im2, int32_t len)
 {
-    len *= 2;
-    if(len*2<=DATA512Float_LOOP) //len==4
+    if(len<=DATA512Float_LOOP) //len==4,8
     {
-        *(__m512*)(in_re2) = _mm512_load_ps(in_re1);
-        *(__m512*)(in_re2+len) = _mm512_setzero_ps();
-        *(__m512*)(in_re2+2*len) = _mm512_setzero_ps();
-        *(__m512*)(in_re2+3*len) = _mm512_load_ps(in_re1);
-        *(__m512*)(in_im2) = _mm512_load_ps(in_im1);
-        *(__m512*)(in_im2+len) = _mm512_setzero_ps();
-        *(__m512*)(in_im2+2*len) = _mm512_setzero_ps();
-        *(__m512*)(in_im2+3*len) = _mm512_load_ps(in_im1);
-        gResistO3_2 += *(in_re2) + *(in_re2+3*len) + 
-                       *(in_im2) + *(in_im2+3*len);
+        for(int32_t i = 0; i < len; i++)
+        {
+            *(__m512*)(in_re2+i*len*2) = _mm512_load_ps(in_re1+i*len);
+            *(__m512*)(in_re2+i*len*2+len) = _mm512_setzero_ps();
+            *(__m512*)(in_im2+i*len*2) = _mm512_load_ps(in_im1+i*len);
+            *(__m512*)(in_im2+i*len*2+len) = _mm512_setzero_ps();
+            gResistO3_2 += *(in_re2+i*len) + *(in_re2+i*len+len) + 
+                           *(in_im2+i*len) + *(in_im2+i*len+len);
+        }
+        
+        for(int32_t i = 0; i < len; i++)
+        {
+            *(__m512*)(in_re2+(i+len)*len*2) = _mm512_setzero_ps();
+            *(__m512*)(in_re2+(i+len)*len*2+len) = _mm512_load_ps(in_re1+i*len);
+            *(__m512*)(in_im2+(i+len)*len*2) = _mm512_setzero_ps();
+            *(__m512*)(in_im2+(i+len)*len*2+len) = _mm512_load_ps(in_im1+i*len);
+            gResistO3_2 += *(in_re2+(i+len)*len) + *(in_re2+(i+len)*len+len) + 
+                           *(in_im2+(i+len)*len) + *(in_im2+(i+len)*len+len);
+        }
     }
     else
     {
         int32_t loop = len/DATA512Float_LOOP;
-        for(int32_t i = 0; i < loop; i++)
+            
+        for(int32_t i = 0; i < len; i++)
         {
-            *(__m512*)(in_re2+i*DATA512Float_LOOP) = _mm512_load_ps(in_re1+i*16);
-            *(__m512*)(in_re2+i*DATA512Float_LOOP+len) = _mm512_setzero_ps();
-            *(__m512*)(in_re2+i*DATA512Float_LOOP+2*len) = _mm512_setzero_ps();
-            *(__m512*)(in_re2+i*DATA512Float_LOOP+3*len) = _mm512_load_ps(in_re1+i*16);
-            *(__m512*)(in_im2+i*DATA512Float_LOOP) = _mm512_load_ps(in_im1+i*16);
-            *(__m512*)(in_im2+i*DATA512Float_LOOP+len) = _mm512_setzero_ps();
-            *(__m512*)(in_im2+i*DATA512Float_LOOP+2*len) = _mm512_setzero_ps();
-            *(__m512*)(in_im2+i*DATA512Float_LOOP+3*len) = _mm512_load_ps(in_im1+i*16);
-            gResistO3_2 += *(in_re2+i*DATA512Float_LOOP) + *(in_re2+i*DATA512Float_LOOP+3*len) + 
-                           *(in_im2+i*DATA512Float_LOOP) + *(in_im2+i*DATA512Float_LOOP+3*len);
+            for(int32_t j = 0; j < loop; j++)
+            *(__m512*)(in_re2+i*len*2+j*DATA512Float_LOOP) = _mm512_load_ps(in_re1+i*len+j*DATA512Float_LOOP);
+            for(int32_t j = 0; j < loop; j++)
+            *(__m512*)(in_re2+i*len*2+j*DATA512Float_LOOP+len) = _mm512_setzero_ps();
+            for(int32_t j = 0; j < loop; j++)
+            *(__m512*)(in_im2+i*len*2+j*DATA512Float_LOOP) = _mm512_load_ps(in_im1+i*len+j*DATA512Float_LOOP);
+            for(int32_t j = 0; j < loop; j++)
+            *(__m512*)(in_im2+i*len*2+j*DATA512Float_LOOP+len) = _mm512_setzero_ps();
+            gResistO3_2 += *(in_re2+i*len) + *(in_re2+i*len+len) + 
+                           *(in_im2+i*len) + *(in_im2+i*len+len);
         }
+         
+        for(int32_t i = 0; i < len; i++)
+        {
+            for(int32_t j = 0; j < loop; j++)
+            *(__m512*)(in_re2+(i+len)*len*2+j*DATA512Float_LOOP) = _mm512_setzero_ps();
+            for(int32_t j = 0; j < loop; j++)
+            *(__m512*)(in_re2+(i+len)*len*2+j*DATA512Float_LOOP+len) = _mm512_load_ps(in_re1+i*len+j*DATA512Float_LOOP);
+            for(int32_t j = 0; j < loop; j++)
+            *(__m512*)(in_im2+(i+len)*len*2+j*DATA512Float_LOOP) = _mm512_setzero_ps();
+            for(int32_t j = 0; j < loop; j++)
+            *(__m512*)(in_im2+(i+len)*len*2+j*DATA512Float_LOOP+len) = _mm512_load_ps(in_im1+i*len+j*DATA512Float_LOOP);
+            gResistO3_2 += *(in_re2+(i+len)*len) + *(in_re2+(i+len)*len+len) + 
+                           *(in_im2+(i+len)*len) + *(in_im2+(i+len)*len+len);
+        }
+                
     }
 }
 
 void kron_double(double* in_re1, double* in_im1,double* in_re2, double* in_im2, int32_t len)
-{
-    len *= 2;
-    /*if(len<=DATA512Double_LOOP)
+{    
+    if(len<=DATA512Double_LOOP) //len==4,8
     {
-        *(__m512d*)(in_re2)       = _mm512_load_pd(in_re1);
-        *(__m512d*)(in_re2+len)   = _mm512_setzero_pd();
-        *(__m512d*)(in_re2+2*len) = _mm512_setzero_pd();
-        *(__m512d*)(in_re2+3*len) = _mm512_load_pd(in_re1);
-        *(__m512d*)(in_im2)       = _mm512_load_pd(in_im1);
-        *(__m512d*)(in_im2+len)   = _mm512_setzero_pd();
-        *(__m512d*)(in_im2+2*len) = _mm512_setzero_pd();
-        *(__m512d*)(in_im2+3*len) = _mm512_load_pd(in_im1);
-        gResistO3_2 += *in_re2 + *(in_re2+3*len) + *in_im2 + *(in_im2+3*len);
+        for(int32_t i = 0; i < len; i++)
+        {
+            *(__m512d*)(in_re2+i*len*2) = _mm512_load_pd(in_re1+i*len);
+            *(__m512d*)(in_re2+i*len*2+len) = _mm512_setzero_pd();
+            *(__m512d*)(in_im2+i*len*2) = _mm512_load_pd(in_im1+i*len);
+            *(__m512d*)(in_im2+i*len*2+len) = _mm512_setzero_pd();
+            gResistO3_2 += *(in_re2+i*len) + *(in_re2+i*len+len) + 
+                           *(in_im2+i*len) + *(in_im2+i*len+len);
+        }
+        
+        for(int32_t i = 0; i < len; i++)
+        {
+            *(__m512d*)(in_re2+(i+len)*len*2) = _mm512_setzero_pd();
+            *(__m512d*)(in_re2+(i+len)*len*2+len) = _mm512_load_pd(in_re1+i*len);
+            *(__m512d*)(in_im2+(i+len)*len*2) = _mm512_setzero_pd();
+            *(__m512d*)(in_im2+(i+len)*len*2+len) = _mm512_load_pd(in_im1+i*len);
+            gResistO3_2 += *(in_re2+(i+len)*len) + *(in_re2+(i+len)*len+len) + 
+                           *(in_im2+(i+len)*len) + *(in_im2+(i+len)*len+len);
+        }
     }
-    else*/
+    else
     {
         int32_t loop = len/DATA512Double_LOOP;
-        for(int32_t i = 0; i < loop; i++)
+            
+        for(int32_t i = 0; i < len; i++)
         {
-            *(__m512d*)(in_re2+i*DATA512Double_LOOP) = _mm512_load_pd(in_re1+i*8);
-            *(__m512d*)(in_re2+i*DATA512Double_LOOP+len) = _mm512_setzero_pd();
-            *(__m512d*)(in_re2+i*DATA512Double_LOOP+2*len) = _mm512_setzero_pd();
-            *(__m512d*)(in_re2+i*DATA512Double_LOOP+3*len) = _mm512_load_pd(in_re1+i*8);
-            *(__m512d*)(in_im2+i*DATA512Double_LOOP) = _mm512_load_pd(in_im1+i*8);
-            *(__m512d*)(in_im2+i*DATA512Double_LOOP+len) = _mm512_setzero_pd();
-            *(__m512d*)(in_im2+i*DATA512Double_LOOP+2*len) = _mm512_setzero_pd();
-            *(__m512d*)(in_im2+i*DATA512Double_LOOP+3*len) = _mm512_load_pd(in_im1+i*8);
-            gResistO3_2 += *(in_re2+i*DATA512Double_LOOP) + *(in_re2+i*DATA512Double_LOOP+3*len) + 
-                           *(in_im2+i*DATA512Double_LOOP) + *(in_im2+i*DATA512Double_LOOP+3*len);
+            for(int32_t j = 0; j < loop; j++)
+            *(__m512d*)(in_re2+i*len*2+j*DATA512Double_LOOP) = _mm512_load_pd(in_re1+i*len+j*DATA512Double_LOOP);
+            for(int32_t j = 0; j < loop; j++)
+            *(__m512d*)(in_re2+i*len*2+j*DATA512Double_LOOP+len) = _mm512_setzero_pd();
+            for(int32_t j = 0; j < loop; j++)
+            *(__m512d*)(in_im2+i*len*2+j*DATA512Double_LOOP) = _mm512_load_pd(in_im1+i*len+j*DATA512Double_LOOP);
+            for(int32_t j = 0; j < loop; j++)
+            *(__m512d*)(in_im2+i*len*2+j*DATA512Double_LOOP+len) = _mm512_setzero_pd();
+            gResistO3_2 += *(in_re2+i*len) + *(in_re2+i*len+len) + 
+                           *(in_im2+i*len) + *(in_im2+i*len+len);
+        }
+         
+        for(int32_t i = 0; i < len; i++)
+        {
+            for(int32_t j = 0; j < loop; j++)
+            *(__m512d*)(in_re2+(i+len)*len*2+j*DATA512Double_LOOP) = _mm512_setzero_pd();
+            for(int32_t j = 0; j < loop; j++)
+            *(__m512d*)(in_re2+(i+len)*len*2+j*DATA512Double_LOOP+len) = _mm512_load_pd(in_re1+i*len+j*DATA512Double_LOOP);
+            for(int32_t j = 0; j < loop; j++)
+            *(__m512d*)(in_im2+(i+len)*len*2+j*DATA512Double_LOOP) = _mm512_setzero_pd();
+            for(int32_t j = 0; j < loop; j++)
+            *(__m512d*)(in_im2+(i+len)*len*2+j*DATA512Double_LOOP+len) = _mm512_load_pd(in_im1+i*len+j*DATA512Double_LOOP);
+            gResistO3_2 += *(in_re2+(i+len)*len) + *(in_re2+(i+len)*len+len) + 
+                           *(in_im2+(i+len)*len) + *(in_im2+(i+len)*len+len);
         }
     }
 }
