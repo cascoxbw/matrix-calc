@@ -14,7 +14,7 @@ typedef unsigned long uint64_t;
 #define MAX_SIZE            128*128
 #define DATA512Float_LOOP   16
 #define DATA512Double_LOOP  8
-#define NUM_CASE            40
+#define NUM_CASE            32
 #define NUM_LOOP            10000
 
 int32_t gCycleCount[NUM_CASE][NUM_LOOP];
@@ -29,14 +29,23 @@ void display(int32_t caseid)
     std::vector<int32_t> v0(gCycleCount[caseid],gCycleCount[caseid]+NUM_LOOP);
     std::sort(v0.begin(), v0.end());
     
-    int32_t sum = std::accumulate(v0.begin(), v0.end(), 0);  
-    int32_t avg =  sum / v0.size(); 
+    double sum = std::accumulate(v0.begin(), v0.end(), 0);  
+    double avg =  sum / v0.size(); 
+    if (caseid == 31 && NUM_LOOP >= 10000) 
+    {
+        sum = 0;
+        for (int32_t i = 0; i < v0.size(); i++)
+        {
+            sum += v0[i] / 100;
+        }
+        avg = sum / (v0.size()/100);
+    }
 
     //auto maxPosition = max_element(v0.begin(), v0.end());
     //auto minPosition = min_element(v0.begin(), v0.end());
     
     
-    printf(" case %d: cycle total=%d, loop num=%zu, cycle avg=%d, cycle 95=%d, cycle 99=%d, cycle 100=%d\n", caseid, sum, v0.size(), avg, v0[NUM_LOOP*0.95], v0[NUM_LOOP*0.99], v0[NUM_LOOP*0.999]);
+    printf(" case %d: cycle total=%d, loop num=%zu, cycle avg=%d, cycle 95=%d, cycle 99=%d, cycle 100=%d\n", caseid, (int32_t)sum, v0.size(), (int32_t)avg, v0[NUM_LOOP*0.95], v0[NUM_LOOP*0.99], v0[NUM_LOOP*0.999]);
     //sleep(5);
 }
 
@@ -577,15 +586,15 @@ static __m512 constZero = _mm512_setzero_ps();
 #define GET_G_COL1_double(matGRe, matGIm, matBRe, matBIm, matD, j, temp0, temp1)\
 {\
     GET_AxBH_double(matGRe[j][0][0], matGIm[j][0][0], matGRe[1][0][0], matGIm[1][0][0], temp0[0], temp1[0]);\
-    matGRe[j][1][0] = _mm512_sub_ps(matBRe[j][1][0], temp0[0]);\
-    matGIm[j][1][0] = _mm512_sub_ps(matBIm[j][1][0], temp1[0]);\
-    matGRe[j][1][0] = _mm512_mul_ps(matGRe[j][1][0], matD[1][0]);\
-    matGIm[j][1][0] = _mm512_mul_ps(matGIm[j][1][0], matD[1][0]);\
+    matGRe[j][1][0] = _mm512_sub_pd(matBRe[j][1][0], temp0[0]);\
+    matGIm[j][1][0] = _mm512_sub_pd(matBIm[j][1][0], temp1[0]);\
+    matGRe[j][1][0] = _mm512_mul_pd(matGRe[j][1][0], matD[1][0]);\
+    matGIm[j][1][0] = _mm512_mul_pd(matGIm[j][1][0], matD[1][0]);\
     GET_AxBH_double(matGRe[j][0][1], matGIm[j][0][1], matGRe[1][0][1], matGIm[1][0][1], temp0[1], temp1[1]);\
-    matGRe[j][1][1] = _mm512_sub_ps(matBRe[j][1][1], temp0[1]);\
-    matGIm[j][1][1] = _mm512_sub_ps(matBIm[j][1][1], temp1[1]);\
-    matGRe[j][1][1] = _mm512_mul_ps(matGRe[j][1][1], matD[1][1]);\
-    matGIm[j][1][1] = _mm512_mul_ps(matGIm[j][1][1], matD[1][1]);\
+    matGRe[j][1][1] = _mm512_sub_pd(matBRe[j][1][1], temp0[1]);\
+    matGIm[j][1][1] = _mm512_sub_pd(matBIm[j][1][1], temp1[1]);\
+    matGRe[j][1][1] = _mm512_mul_pd(matGRe[j][1][1], matD[1][1]);\
+    matGIm[j][1][1] = _mm512_mul_pd(matGIm[j][1][1], matD[1][1]);\
 }
 
 // get G22
@@ -1176,7 +1185,7 @@ static __m512 constZero = _mm512_setzero_ps();
 #define N_8 8
 #define N_32 32
 #define N_64 64
-#define MAX_LEN            64
+#define MAX_LEN            N_64
 __m512 gResistO3_5;
 double gResistO3_6 = 0;
 
@@ -1651,7 +1660,7 @@ void matrix_inv_cholesky_8x8_double(__m512 matBRe[MAX_LEN][MAX_LEN][2], __m512 m
         matInvBRe[i][i][0] = _mm512_mul_pd(matLRe[i][i][0], matLRe[i][i][0]);
         for (k = (i+1); k < N_8; k++)
         {
-            temp1[0] = _mm512_add_pd(_mm512_mul_pd(matLRe[k][i][0], matLRe[k][i][0]), _mm512_mul_ps(matLIm[k][i][0], matLIm[k][i][0]));
+            temp1[0] = _mm512_add_pd(_mm512_mul_pd(matLRe[k][i][0], matLRe[k][i][0]), _mm512_mul_pd(matLIm[k][i][0], matLIm[k][i][0]));
             matInvBRe[i][i][0] = _mm512_add_pd(matInvBRe[i][i][0], temp1[0]);
         }
         matInvBIm[i][i][0] = _mm512_setzero_pd();
@@ -1659,7 +1668,7 @@ void matrix_inv_cholesky_8x8_double(__m512 matBRe[MAX_LEN][MAX_LEN][2], __m512 m
         matInvBRe[i][i][1] = _mm512_mul_pd(matLRe[i][i][1], matLRe[i][i][1]);
         for (k = (i+1); k < N_8; k++)
         {
-            temp1[1] = _mm512_add_pd(_mm512_mul_pd(matLRe[k][i][1], matLRe[k][i][1]), _mm512_mul_ps(matLIm[k][i][1], matLIm[k][i][1]));
+            temp1[1] = _mm512_add_pd(_mm512_mul_pd(matLRe[k][i][1], matLRe[k][i][1]), _mm512_mul_pd(matLIm[k][i][1], matLIm[k][i][1]));
             matInvBRe[i][i][1] = _mm512_add_pd(matInvBRe[i][i][1], temp1[1]);
         }
         matInvBIm[i][i][1] = _mm512_setzero_pd();
@@ -1974,6 +1983,528 @@ void matrix_inv_cholesky_32x32(__m512 matBRe[MAX_LEN][MAX_LEN], __m512 matBIm[MA
     gResistO3_5 = _mm512_add_ps(gResistO3_5,_mm512_sub_ps(matInvBRe[0][0], matInvBIm[0][0]));
 }
 
+void matrix_inv_cholesky_32x32_double(__m512 matBRe[MAX_LEN][MAX_LEN][2], __m512 matBIm[MAX_LEN][MAX_LEN][2],
+    __m512 matInvBRe[MAX_LEN][MAX_LEN][2], __m512 matInvBIm[MAX_LEN][MAX_LEN][2])
+{
+    // temp matrix and variables for matrix inversion
+    __m512 matGRe[N_32][N_32][2], matGIm[N_32][N_32][2];
+    __m512 matLRe[N_32][N_32][2], matLIm[N_32][N_32][2];
+    __m512 matD[N_32][2], matND[N_32][2];
+    __m512 temp0[2], temp1[2], temp2[2];
+    int32_t i, j, k;
+
+    /////////////////////////////////// get G, B = G*G', G is a lower triangular matrix
+    // Column 0
+    GET_G00_double(matGRe, matBRe, matD, matND);
+    for (i=1;i<N_32;i++)GET_G_COL0_double(matGRe, matGIm, matBRe, matBIm, matD, i);
+    // Column 1
+    GET_G11_double(matGRe, matGIm, matBRe, matD, matND, temp0);
+    for (i=2;i<N_32;i++)GET_G_COL1_double(matGRe, matGIm, matBRe, matBIm, matD, i, temp0, temp1);
+    // Column 2
+    GET_G22_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1);
+    for (i=3;i<N_32;i++)GET_G_COL2_double(matGRe, matGIm, matBRe, matBIm, matD, i, temp0, temp1);
+    // Column 3
+    GET_G33_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2);
+    for (i=4;i<N_32;i++)GET_G_COL3_double(matGRe, matGIm, matBRe, matBIm, matD, i, temp0, temp1);
+    // Column 4
+    GET_G44_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1);
+    for (i=5;i<N_32;i++)GET_G_COL_EVEN_double(matGRe, matGIm, matBRe, matBIm, matD, i, 4, temp0, temp1);
+    // Column 5
+    GET_G55_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2);
+    for (i=6;i<N_32;i++)GET_G_COL_ODD_double(matGRe, matGIm, matBRe, matBIm, matD, i, 5, temp0, temp1);
+    // Column 6
+    GET_G66_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1);
+    for (i=7;i<N_32;i++)GET_G_COL_EVEN_double(matGRe, matGIm, matBRe, matBIm, matD, i, 6, temp0, temp1);
+    // Column 7
+    GET_G77_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2);
+    for (i=8;i<N_32;i++)GET_G_COL_ODD_double(matGRe, matGIm, matBRe, matBIm, matD, i, 7, temp0, temp1);
+    // Column 8
+    GET_Gii_EVEN_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2, 8);
+    for (i=9;i<N_32;i++)GET_G_COL_EVEN_double(matGRe, matGIm, matBRe, matBIm, matD, i, 8, temp0, temp1);
+    // Column 9
+    GET_Gii_ODD_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2, 9);
+    for (i=10;i<N_32;i++)GET_G_COL_ODD_double(matGRe, matGIm, matBRe, matBIm, matD, i, 9, temp0, temp1);
+    // Column 10
+    GET_Gii_EVEN_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2, 10);
+    for (i=11;i<N_32;i++)GET_G_COL_EVEN_double(matGRe, matGIm, matBRe, matBIm, matD, i, 10, temp0, temp1);
+    // Column 11
+    GET_Gii_ODD_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2, 11);
+    for (i=12;i<N_32;i++)GET_G_COL_ODD_double(matGRe, matGIm, matBRe, matBIm, matD, i, 11, temp0, temp1);
+    // Column 12
+    GET_Gii_EVEN_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2, 12);
+    for (i=13;i<N_32;i++)GET_G_COL_EVEN_double(matGRe, matGIm, matBRe, matBIm, matD, i, 12, temp0, temp1);
+    // Column 13
+    GET_Gii_ODD_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2, 13);
+    for (i=14;i<N_32;i++)GET_G_COL_ODD_double(matGRe, matGIm, matBRe, matBIm, matD, i, 13, temp0, temp1);
+    // Column 14
+    GET_Gii_EVEN_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2, 14);
+    for (i=15;i<N_32;i++)GET_G_COL_EVEN_double(matGRe, matGIm, matBRe, matBIm, matD, i, 14, temp0, temp1);
+    // Column 15
+    GET_Gii_ODD_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2, 15);
+    for (i=16;i<N_32;i++)GET_G_COL_ODD_double(matGRe, matGIm, matBRe, matBIm, matD, i, 15, temp0, temp1);
+    // Column 16
+    GET_Gii_EVEN_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2, 16);
+    for (i=17;i<N_32;i++)GET_G_COL_EVEN_double(matGRe, matGIm, matBRe, matBIm, matD, i, 16, temp0, temp1);
+    // Column 17
+    GET_Gii_ODD_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2, 17);
+    for (i=18;i<N_32;i++)GET_G_COL_ODD_double(matGRe, matGIm, matBRe, matBIm, matD, i, 17, temp0, temp1);
+    // Column 18
+    GET_Gii_EVEN_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2, 18);
+    for (i=19;i<N_32;i++)GET_G_COL_EVEN_double(matGRe, matGIm, matBRe, matBIm, matD, i, 18, temp0, temp1);
+    // Column 19
+    GET_Gii_ODD_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2, 19);
+    for (i=20;i<N_32;i++)GET_G_COL_ODD_double(matGRe, matGIm, matBRe, matBIm, matD, i, 19, temp0, temp1);
+    // Column 20
+    GET_Gii_EVEN_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2, 20);
+    for (i=21;i<N_32;i++)GET_G_COL_EVEN_double(matGRe, matGIm, matBRe, matBIm, matD, i, 20, temp0, temp1);
+    // Column 21
+    GET_Gii_ODD_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2, 21);
+    for (i=22;i<N_32;i++)GET_G_COL_ODD_double(matGRe, matGIm, matBRe, matBIm, matD, i, 21, temp0, temp1);
+    // Column 22
+    GET_Gii_EVEN_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2, 22);
+    for (i=23;i<N_32;i++)GET_G_COL_EVEN_double(matGRe, matGIm, matBRe, matBIm, matD, i, 22, temp0, temp1);
+    // Column 23
+    GET_Gii_ODD_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2, 23);
+    for (i=24;i<N_32;i++)GET_G_COL_ODD_double(matGRe, matGIm, matBRe, matBIm, matD, i, 23, temp0, temp1);
+    // Column 24
+    GET_Gii_EVEN_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2, 24);
+    for (i=25;i<N_32;i++)GET_G_COL_EVEN_double(matGRe, matGIm, matBRe, matBIm, matD, i, 24, temp0, temp1);
+    // Column 25
+    GET_Gii_ODD_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2, 25);
+    for (i=26;i<N_32;i++)GET_G_COL_ODD_double(matGRe, matGIm, matBRe, matBIm, matD, i, 25, temp0, temp1);
+    // Column 26
+    GET_Gii_EVEN_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2, 26);
+    for (i=27;i<N_32;i++)GET_G_COL_EVEN_double(matGRe, matGIm, matBRe, matBIm, matD, i, 26, temp0, temp1);
+    // Column 27
+    GET_Gii_ODD_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2, 27);
+    for (i=28;i<N_32;i++)GET_G_COL_ODD_double(matGRe, matGIm, matBRe, matBIm, matD, i, 27, temp0, temp1);
+    // Column 28
+    GET_Gii_EVEN_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2, 28);
+    for (i=29;i<N_32;i++)GET_G_COL_EVEN_double(matGRe, matGIm, matBRe, matBIm, matD, i, 28, temp0, temp1);
+    // Column 29
+    GET_Gii_ODD_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2, 29);
+    for (i=30;i<N_32;i++)GET_G_COL_ODD_double(matGRe, matGIm, matBRe, matBIm, matD, i, 29, temp0, temp1);
+    // Column 30
+    GET_Gii_EVEN_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2, 30);
+    for (i=31;i<N_32;i++)GET_G_COL_EVEN_double(matGRe, matGIm, matBRe, matBIm, matD, i, 30, temp0, temp1);
+    // Column 31
+    GET_Gii_ODD_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2, 31);
+
+    /////////////////////////////////// get L, L=invG
+    // Column 0
+    SET_Lii_double(matLRe, matLIm, matD, 0);
+    GET_L_i1i_double(matLRe, matLIm, matGRe, matGIm, matND, 1, 0);
+    for (i=2;i<N_32;i++)GET_L_ji_double(matLRe, matLIm, matGRe, matGIm, matND, i, 0, temp0, temp1);
+    // Column 1
+    SET_Lii_double(matLRe, matLIm, matD, 1);
+    GET_L_i1i_double(matLRe, matLIm, matGRe, matGIm, matND, 2, 1);
+    for (i=3;i<N_32;i++)GET_L_ji_double(matLRe, matLIm, matGRe, matGIm, matND, i, 1, temp0, temp1);
+    // Column 2
+    SET_Lii_double(matLRe, matLIm, matD, 2);
+    GET_L_i1i_double(matLRe, matLIm, matGRe, matGIm, matND, 3, 2);
+    for (i=4;i<N_32;i++)GET_L_ji_double(matLRe, matLIm, matGRe, matGIm, matND, i, 2, temp0, temp1);
+    // Column 3
+    SET_Lii_double(matLRe, matLIm, matD, 3);
+    GET_L_i1i_double(matLRe, matLIm, matGRe, matGIm, matND, 4, 3);
+    for (i=5;i<N_32;i++)GET_L_ji_double(matLRe, matLIm, matGRe, matGIm, matND, i, 3, temp0, temp1);
+    // Column 4
+    SET_Lii_double(matLRe, matLIm, matD, 4);
+    GET_L_i1i_double(matLRe, matLIm, matGRe, matGIm, matND, 5, 4);
+    for (i=6;i<N_32;i++)GET_L_ji_double(matLRe, matLIm, matGRe, matGIm, matND, i, 4, temp0, temp1);
+    // Column 5
+    SET_Lii_double(matLRe, matLIm, matD, 5);
+    GET_L_i1i_double(matLRe, matLIm, matGRe, matGIm, matND, 6, 5);
+    for (i=7;i<N_32;i++)GET_L_ji_double(matLRe, matLIm, matGRe, matGIm, matND, i, 5, temp0, temp1);
+    // Column 6
+    SET_Lii_double(matLRe, matLIm, matD, 6);
+    GET_L_i1i_double(matLRe, matLIm, matGRe, matGIm, matND, 7, 6);
+    for (i=8;i<N_32;i++)GET_L_ji_double(matLRe, matLIm, matGRe, matGIm, matND, i, 6, temp0, temp1);
+    // Column 7
+    SET_Lii_double(matLRe, matLIm, matD, 7);
+    GET_L_i1i_double(matLRe, matLIm, matGRe, matGIm, matND, 8, 7);
+    for (i=9;i<N_32;i++)GET_L_ji_double(matLRe, matLIm, matGRe, matGIm, matND, i, 7, temp0, temp1);
+    // Column 8
+    SET_Lii_double(matLRe, matLIm, matD, 8);
+    GET_L_i1i_double(matLRe, matLIm, matGRe, matGIm, matND, 9, 8);
+    for (i=10;i<N_32;i++)GET_L_ji_double(matLRe, matLIm, matGRe, matGIm, matND, i, 8, temp0, temp1);
+    // Column 9
+    SET_Lii_double(matLRe, matLIm, matD, 9);
+    GET_L_i1i_double(matLRe, matLIm, matGRe, matGIm, matND, 10, 9);
+    for (i=11;i<N_32;i++)GET_L_ji_double(matLRe, matLIm, matGRe, matGIm, matND, i, 9, temp0, temp1);
+    // Column 10
+    SET_Lii_double(matLRe, matLIm, matD, 10);
+    GET_L_i1i_double(matLRe, matLIm, matGRe, matGIm, matND, 11, 10);
+    for (i=12;i<N_32;i++)GET_L_ji_double(matLRe, matLIm, matGRe, matGIm, matND, i, 10, temp0, temp1);
+    // Column 11
+    SET_Lii_double(matLRe, matLIm, matD, 11);
+    GET_L_i1i_double(matLRe, matLIm, matGRe, matGIm, matND, 12, 11);
+    for (i=13;i<N_32;i++)GET_L_ji_double(matLRe, matLIm, matGRe, matGIm, matND, i, 11, temp0, temp1);
+    // Column 12
+    SET_Lii_double(matLRe, matLIm, matD, 12);
+    GET_L_i1i_double(matLRe, matLIm, matGRe, matGIm, matND, 13, 12);
+    for (i=14;i<N_32;i++)GET_L_ji_double(matLRe, matLIm, matGRe, matGIm, matND, i, 12, temp0, temp1);
+    // Column 13
+    SET_Lii_double(matLRe, matLIm, matD, 13);
+    GET_L_i1i_double(matLRe, matLIm, matGRe, matGIm, matND, 14, 13);
+    for (i=15;i<N_32;i++)GET_L_ji_double(matLRe, matLIm, matGRe, matGIm, matND, i, 13, temp0, temp1);
+    // Column 14
+    SET_Lii_double(matLRe, matLIm, matD, 14);
+    GET_L_i1i_double(matLRe, matLIm, matGRe, matGIm, matND, 15, 14);
+    for (i=16;i<N_32;i++)GET_L_ji_double(matLRe, matLIm, matGRe, matGIm, matND, i, 14, temp0, temp1);
+    // Column 15
+    SET_Lii_double(matLRe, matLIm, matD, 15);
+    GET_L_i1i_double(matLRe, matLIm, matGRe, matGIm, matND, 16, 15);
+    for (i=17;i<N_32;i++)GET_L_ji_double(matLRe, matLIm, matGRe, matGIm, matND, i, 15, temp0, temp1);
+    // Column 16
+    SET_Lii_double(matLRe, matLIm, matD, 16);
+    GET_L_i1i_double(matLRe, matLIm, matGRe, matGIm, matND, 17, 16);
+    for (i=18;i<N_32;i++)GET_L_ji_double(matLRe, matLIm, matGRe, matGIm, matND, i, 16, temp0, temp1);
+    // Column 17
+    SET_Lii_double(matLRe, matLIm, matD, 17);
+    GET_L_i1i_double(matLRe, matLIm, matGRe, matGIm, matND, 18, 17);
+    for (i=19;i<N_32;i++)GET_L_ji_double(matLRe, matLIm, matGRe, matGIm, matND, i, 17, temp0, temp1);
+    // Column 18
+    SET_Lii_double(matLRe, matLIm, matD, 18);
+    GET_L_i1i_double(matLRe, matLIm, matGRe, matGIm, matND, 19, 18);
+    for (i=20;i<N_32;i++)GET_L_ji_double(matLRe, matLIm, matGRe, matGIm, matND, i, 18, temp0, temp1);
+    // Column 19
+    SET_Lii_double(matLRe, matLIm, matD, 19);
+    GET_L_i1i_double(matLRe, matLIm, matGRe, matGIm, matND, 20, 19);
+    for (i=21;i<N_32;i++)GET_L_ji_double(matLRe, matLIm, matGRe, matGIm, matND, i, 19, temp0, temp1);
+    // Column 20
+    SET_Lii_double(matLRe, matLIm, matD, 20);
+    GET_L_i1i_double(matLRe, matLIm, matGRe, matGIm, matND, 21, 20);
+    for (i=22;i<N_32;i++)GET_L_ji_double(matLRe, matLIm, matGRe, matGIm, matND, i, 20, temp0, temp1);
+    // Column 21
+    SET_Lii_double(matLRe, matLIm, matD, 21);
+    GET_L_i1i_double(matLRe, matLIm, matGRe, matGIm, matND, 22, 21);
+    for (i=23;i<N_32;i++)GET_L_ji_double(matLRe, matLIm, matGRe, matGIm, matND, i, 21, temp0, temp1);
+    // Column 22
+    SET_Lii_double(matLRe, matLIm, matD, 22);
+    GET_L_i1i_double(matLRe, matLIm, matGRe, matGIm, matND, 23, 22);
+    for (i=24;i<N_32;i++)GET_L_ji_double(matLRe, matLIm, matGRe, matGIm, matND, i, 22, temp0, temp1);
+    // Column 23
+    SET_Lii_double(matLRe, matLIm, matD, 23);
+    GET_L_i1i_double(matLRe, matLIm, matGRe, matGIm, matND, 24, 23);
+    for (i=25;i<N_32;i++)GET_L_ji_double(matLRe, matLIm, matGRe, matGIm, matND, i, 23, temp0, temp1);
+    // Column 24
+    SET_Lii_double(matLRe, matLIm, matD, 24);
+    GET_L_i1i_double(matLRe, matLIm, matGRe, matGIm, matND, 25, 24);
+    for (i=26;i<N_32;i++)GET_L_ji_double(matLRe, matLIm, matGRe, matGIm, matND, i, 24, temp0, temp1);
+    // Column 25
+    SET_Lii_double(matLRe, matLIm, matD, 25);
+    GET_L_i1i_double(matLRe, matLIm, matGRe, matGIm, matND, 26, 25);
+    for (i=27;i<N_32;i++)GET_L_ji_double(matLRe, matLIm, matGRe, matGIm, matND, i, 25, temp0, temp1);
+    // Column 26
+    SET_Lii_double(matLRe, matLIm, matD, 26);
+    GET_L_i1i_double(matLRe, matLIm, matGRe, matGIm, matND, 27, 26);
+    for (i=28;i<N_32;i++)GET_L_ji_double(matLRe, matLIm, matGRe, matGIm, matND, i, 26, temp0, temp1);
+    // Column 27
+    SET_Lii_double(matLRe, matLIm, matD, 27);
+    GET_L_i1i_double(matLRe, matLIm, matGRe, matGIm, matND, 28, 27);
+    for (i=29;i<N_32;i++)GET_L_ji_double(matLRe, matLIm, matGRe, matGIm, matND, i, 27, temp0, temp1);
+    // Column 28
+    SET_Lii_double(matLRe, matLIm, matD, 28);
+    GET_L_i1i_double(matLRe, matLIm, matGRe, matGIm, matND, 29, 28);
+    for (i=30;i<N_32;i++)GET_L_ji_double(matLRe, matLIm, matGRe, matGIm, matND, i, 28, temp0, temp1);
+    // Column 29
+    SET_Lii_double(matLRe, matLIm, matD, 29);
+    GET_L_i1i_double(matLRe, matLIm, matGRe, matGIm, matND, 30, 29);
+    for (i=31;i<N_32;i++)GET_L_ji_double(matLRe, matLIm, matGRe, matGIm, matND, i, 29, temp0, temp1);
+    // Column 30
+    SET_Lii_double(matLRe, matLIm, matD, 30);
+    GET_L_i1i_double(matLRe, matLIm, matGRe, matGIm, matND, 31, 30);
+    // Column 31
+    SET_Lii_double(matLRe, matLIm, matD, 31);
+
+
+    /////////////////////////////////// get invB = L'*L
+    for(i = 0; i < N_32; i ++)
+    {
+        matInvBRe[i][i][0] = _mm512_mul_pd(matLRe[i][i][0], matLRe[i][i][0]);
+        for (k = (i+1); k < N_32; k++)
+        {
+            temp1[0] = _mm512_add_pd(_mm512_mul_pd(matLRe[k][i][0], matLRe[k][i][0]), _mm512_mul_pd(matLIm[k][i][0], matLIm[k][i][0]));
+            matInvBRe[i][i][0] = _mm512_add_pd(matInvBRe[i][i][0], temp1[0]);
+        }
+        matInvBIm[i][i][0] = _mm512_setzero_pd();
+        
+        matInvBRe[i][i][1] = _mm512_mul_pd(matLRe[i][i][1], matLRe[i][i][1]);
+        for (k = (i+1); k < N_32; k++)
+        {
+            temp1[1] = _mm512_add_pd(_mm512_mul_pd(matLRe[k][i][1], matLRe[k][i][1]), _mm512_mul_pd(matLIm[k][i][1], matLIm[k][i][1]));
+            matInvBRe[i][i][1] = _mm512_add_pd(matInvBRe[i][i][1], temp1[1]);
+        }
+        matInvBIm[i][i][1] = _mm512_setzero_pd();
+    }
+
+    for(i = 0; i < N_32; i ++)
+    {
+        for(j = i+1; j < N_32; j ++)
+        {
+            matInvBRe[i][j][0] = _mm512_mul_pd(matLRe[j][i][0], matLRe[j][j][0]);
+            matInvBIm[i][j][0] = _mm512_sub_pd(constZero, _mm512_mul_pd(matLIm[j][i][0], matLRe[j][j][0]));
+
+            for (k = (j+1); k < N_32; k++)
+            {
+                GET_AxBH_double(matLRe[k][j][0], matLIm[k][j][0], matLRe[k][i][0], matLIm[k][i][0], temp1[0], temp2[0]);
+                matInvBRe[i][j][0] = _mm512_add_pd(matInvBRe[i][j][0], temp1[0]);
+                matInvBIm[i][j][0] = _mm512_add_pd(matInvBIm[i][j][0], temp2[0]);
+            }
+
+            // Hermite matrix
+            matInvBRe[j][i][0] = matInvBRe[i][j][0];
+            matInvBIm[j][i][0] = _mm512_sub_pd(constZero, matInvBIm[i][j][0]);
+            
+            matInvBRe[i][j][1] = _mm512_mul_pd(matLRe[j][i][1], matLRe[j][j][1]);
+            matInvBIm[i][j][1] = _mm512_sub_pd(constZero, _mm512_mul_pd(matLIm[j][i][1], matLRe[j][j][1]));
+            
+            for (k = (j+1); k < N_32; k++)
+            {
+                GET_AxBH_double(matLRe[k][j][1], matLIm[k][j][1], matLRe[k][i][1], matLIm[k][i][1], temp1[1], temp2[1]);
+                matInvBRe[i][j][1] = _mm512_add_pd(matInvBRe[i][j][1], temp1[1]);
+                matInvBIm[i][j][1] = _mm512_add_pd(matInvBIm[i][j][1], temp2[1]);
+            }
+            
+            // Hermite matrix
+            matInvBRe[j][i][1] = matInvBRe[i][j][1];
+            matInvBIm[j][i][1] = _mm512_sub_pd(constZero, matInvBIm[i][j][1]);
+        }
+    }
+    
+    gResistO3_5 = _mm512_add_pd(gResistO3_5,_mm512_sub_pd(matInvBRe[0][0][0], matInvBIm[0][0][0]));
+}
+    
+void matrix_inv_cholesky_64x64(__m512 matBRe[MAX_LEN][MAX_LEN], __m512 matBIm[MAX_LEN][MAX_LEN],
+    __m512 matInvBRe[MAX_LEN][MAX_LEN], __m512 matInvBIm[MAX_LEN][MAX_LEN])
+{
+    // temp matrix and variables for matrix inversion
+    __m512 matGRe[N_64][N_64], matGIm[N_64][N_64];
+    __m512 matLRe[N_64][N_64], matLIm[N_64][N_64];
+    __m512 matD[N_64], matND[N_64];
+    __m512 temp0, temp1, temp2;
+    int32_t i, j, k;
+
+    /////////////////////////////////// get G, B = G*G', G is a lower triangular matrix
+    // Column 0
+    GET_G00(matGRe, matBRe, matD, matND);
+    for (i=1;i<N_64;i++)GET_G_COL0(matGRe, matGIm, matBRe, matBIm, matD, i);
+    // Column 1
+    GET_G11(matGRe, matGIm, matBRe, matD, matND, temp0);
+    for (i=2;i<N_64;i++)GET_G_COL1(matGRe, matGIm, matBRe, matBIm, matD, i, temp0, temp1);
+    // Column 2
+    GET_G22(matGRe, matGIm, matBRe, matD, matND, temp0, temp1);
+    for (i=3;i<N_64;i++)GET_G_COL2(matGRe, matGIm, matBRe, matBIm, matD, i, temp0, temp1);
+    // Column 3
+    GET_G33(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2);
+    for (i=4;i<N_64;i++)GET_G_COL3(matGRe, matGIm, matBRe, matBIm, matD, i, temp0, temp1);
+    // Column 4
+    GET_G44(matGRe, matGIm, matBRe, matD, matND, temp0, temp1);
+    for (i=5;i<N_64;i++)GET_G_COL_EVEN(matGRe, matGIm, matBRe, matBIm, matD, i, 4, temp0, temp1);
+    // Column 5
+    GET_G55(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2);
+    for (i=6;i<N_64;i++)GET_G_COL_ODD(matGRe, matGIm, matBRe, matBIm, matD, i, 5, temp0, temp1);
+    // Column 6
+    GET_G66(matGRe, matGIm, matBRe, matD, matND, temp0, temp1);
+    for (i=7;i<N_64;i++)GET_G_COL_EVEN(matGRe, matGIm, matBRe, matBIm, matD, i, 6, temp0, temp1);
+    // Column 7
+    GET_G77(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2);
+    for (i=8;i<N_64;i++)GET_G_COL_ODD(matGRe, matGIm, matBRe, matBIm, matD, i, 7, temp0, temp1);
+
+    for (j=8;j<N_64-1;j++) 
+    {
+        if (j%2==0)
+        {
+            // Column j even
+            GET_Gii_EVEN(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2, j);
+            for (i=j+1;i<N_64;i++)GET_G_COL_EVEN(matGRe, matGIm, matBRe, matBIm, matD, i, j, temp0, temp1);
+        }
+        else if (j%2==1)
+        {
+            // Column j odd
+            GET_Gii_ODD(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2, j);
+            for (i=j+1;i<N_64;i++)GET_G_COL_ODD(matGRe, matGIm, matBRe, matBIm, matD, i, j, temp0, temp1);
+        }
+    }
+    // Column 63
+    GET_Gii_ODD(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2, 63);
+
+    /////////////////////////////////// get L, L=invG
+    for (j=0;j<N_64-2;j++) 
+    {
+        // Column j
+        SET_Lii(matLRe, matLIm, matD, j);
+        GET_L_i1i(matLRe, matLIm, matGRe, matGIm, matND, j+1, j);
+        for (i=j+2;i<N_64;i++)GET_L_ji(matLRe, matLIm, matGRe, matGIm, matND, i, j, temp0, temp1);
+    }
+    // Column 62
+    SET_Lii(matLRe, matLIm, matD, 62);
+    GET_L_i1i(matLRe, matLIm, matGRe, matGIm, matND, 63, 62);
+    // Column 63
+    SET_Lii(matLRe, matLIm, matD, 63);
+
+
+    /////////////////////////////////// get invB = L'*L
+    for(i = 0; i < N_64; i ++)
+    {
+        matInvBRe[i][i] = _mm512_mul_ps(matLRe[i][i], matLRe[i][i]);
+        for (k = (i+1); k < N_64; k++)
+        {
+            temp1 = _mm512_add_ps(_mm512_mul_ps(matLRe[k][i], matLRe[k][i]), _mm512_mul_ps(matLIm[k][i], matLIm[k][i]));
+            matInvBRe[i][i] = _mm512_add_ps(matInvBRe[i][i], temp1);
+        }
+        matInvBIm[i][i] = _mm512_setzero_ps();
+    }
+
+    for(i = 0; i < N_64; i ++)
+    {
+        for(j = i+1; j < N_64; j ++)
+        {
+            matInvBRe[i][j] = _mm512_mul_ps(matLRe[j][i], matLRe[j][j]);
+            matInvBIm[i][j] = _mm512_sub_ps(constZero, _mm512_mul_ps(matLIm[j][i], matLRe[j][j]));
+
+            for (k = (j+1); k < N_64; k++)
+            {
+                GET_AxBH(matLRe[k][j], matLIm[k][j], matLRe[k][i], matLIm[k][i], temp1, temp2);
+                matInvBRe[i][j] = _mm512_add_ps(matInvBRe[i][j], temp1);
+                matInvBIm[i][j] = _mm512_add_ps(matInvBIm[i][j], temp2);
+            }
+
+            // Hermite matrix
+            matInvBRe[j][i] = matInvBRe[i][j];
+            matInvBIm[j][i] = _mm512_sub_ps(constZero, matInvBIm[i][j]);
+        }
+    }
+    
+    gResistO3_5 = _mm512_add_ps(gResistO3_5,_mm512_sub_ps(matInvBRe[0][0], matInvBIm[0][0]));
+}
+
+void matrix_inv_cholesky_64x64_double(__m512 matBRe[MAX_LEN][MAX_LEN][2], __m512 matBIm[MAX_LEN][MAX_LEN][2],
+    __m512 matInvBRe[MAX_LEN][MAX_LEN][2], __m512 matInvBIm[MAX_LEN][MAX_LEN][2])
+{
+    // temp matrix and variables for matrix inversion
+    __m512 matGRe[N_64][N_64][2], matGIm[N_64][N_64][2];
+    __m512 matLRe[N_64][N_64][2], matLIm[N_64][N_64][2];
+    __m512 matD[N_64][2], matND[N_64][2];
+    __m512 temp0[2], temp1[2], temp2[2];
+    int32_t i, j, k;
+
+    /////////////////////////////////// get G, B = G*G', G is a lower triangular matrix
+    // Column 0
+    GET_G00_double(matGRe, matBRe, matD, matND);
+    for (i=1;i<N_64;i++)GET_G_COL0_double(matGRe, matGIm, matBRe, matBIm, matD, i);
+    // Column 1
+    GET_G11_double(matGRe, matGIm, matBRe, matD, matND, temp0);
+    for (i=2;i<N_64;i++)GET_G_COL1_double(matGRe, matGIm, matBRe, matBIm, matD, i, temp0, temp1);
+    // Column 2
+    GET_G22_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1);
+    for (i=3;i<N_64;i++)GET_G_COL2_double(matGRe, matGIm, matBRe, matBIm, matD, i, temp0, temp1);
+    // Column 3
+    GET_G33_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2);
+    for (i=4;i<N_64;i++)GET_G_COL3_double(matGRe, matGIm, matBRe, matBIm, matD, i, temp0, temp1);
+    // Column 4
+    GET_G44_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1);
+    for (i=5;i<N_64;i++)GET_G_COL_EVEN_double(matGRe, matGIm, matBRe, matBIm, matD, i, 4, temp0, temp1);
+    // Column 5
+    GET_G55_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2);
+    for (i=6;i<N_64;i++)GET_G_COL_ODD_double(matGRe, matGIm, matBRe, matBIm, matD, i, 5, temp0, temp1);
+    // Column 6
+    GET_G66_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1);
+    for (i=7;i<N_64;i++)GET_G_COL_EVEN_double(matGRe, matGIm, matBRe, matBIm, matD, i, 6, temp0, temp1);
+    // Column 7
+    GET_G77_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2);
+    for (i=8;i<N_64;i++)GET_G_COL_ODD_double(matGRe, matGIm, matBRe, matBIm, matD, i, 7, temp0, temp1);
+
+    for (j=8;j<N_64-1;j++) 
+    {
+        if (j%2==0)
+        {
+            // Column j even
+            GET_Gii_EVEN_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2, j);
+            for (i=j+1;i<N_64;i++)GET_G_COL_EVEN_double(matGRe, matGIm, matBRe, matBIm, matD, i, j, temp0, temp1);
+        }
+        else if (j%2==1)
+        {
+            // Column j odd
+            GET_Gii_ODD_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2, j);
+            for (i=j+1;i<N_64;i++)GET_G_COL_ODD_double(matGRe, matGIm, matBRe, matBIm, matD, i, j, temp0, temp1);
+        }
+    }
+    // Column 63
+    GET_Gii_ODD_double(matGRe, matGIm, matBRe, matD, matND, temp0, temp1, temp2, 63);
+
+    /////////////////////////////////// get L, L=invG
+    for (j=0;j<N_64-2;j++) 
+    {
+        // Column j
+        SET_Lii_double(matLRe, matLIm, matD, j);
+        GET_L_i1i_double(matLRe, matLIm, matGRe, matGIm, matND, j+1, j);
+        for (i=j+2;i<N_64;i++)GET_L_ji_double(matLRe, matLIm, matGRe, matGIm, matND, i, j, temp0, temp1);
+    }
+    // Column 62
+    SET_Lii_double(matLRe, matLIm, matD, 62);
+    GET_L_i1i_double(matLRe, matLIm, matGRe, matGIm, matND, 63, 62);
+    // Column 63
+    SET_Lii_double(matLRe, matLIm, matD, 63);
+
+
+    /////////////////////////////////// get invB = L'*L
+    for(i = 0; i < N_64; i ++)
+    {
+        matInvBRe[i][i][0] = _mm512_mul_pd(matLRe[i][i][0], matLRe[i][i][0]);
+        for (k = (i+1); k < N_64; k++)
+        {
+            temp1[0] = _mm512_add_pd(_mm512_mul_pd(matLRe[k][i][0], matLRe[k][i][0]), _mm512_mul_pd(matLIm[k][i][0], matLIm[k][i][0]));
+            matInvBRe[i][i][0] = _mm512_add_pd(matInvBRe[i][i][0], temp1[0]);
+        }
+        matInvBIm[i][i][0] = _mm512_setzero_pd();
+        
+        matInvBRe[i][i][1] = _mm512_mul_pd(matLRe[i][i][1], matLRe[i][i][1]);
+        for (k = (i+1); k < N_64; k++)
+        {
+            temp1[1] = _mm512_add_pd(_mm512_mul_pd(matLRe[k][i][1], matLRe[k][i][1]), _mm512_mul_pd(matLIm[k][i][1], matLIm[k][i][1]));
+            matInvBRe[i][i][1] = _mm512_add_pd(matInvBRe[i][i][1], temp1[1]);
+        }
+        matInvBIm[i][i][1] = _mm512_setzero_pd();
+    }
+
+    for(i = 0; i < N_64; i ++)
+    {
+        for(j = i+1; j < N_64; j ++)
+        {
+            matInvBRe[i][j][0] = _mm512_mul_pd(matLRe[j][i][0], matLRe[j][j][0]);
+            matInvBIm[i][j][0] = _mm512_sub_pd(constZero, _mm512_mul_pd(matLIm[j][i][0], matLRe[j][j][0]));
+
+            for (k = (j+1); k < N_64; k++)
+            {
+                GET_AxBH_double(matLRe[k][j][0], matLIm[k][j][0], matLRe[k][i][0], matLIm[k][i][0], temp1[0], temp2[0]);
+                matInvBRe[i][j][0] = _mm512_add_pd(matInvBRe[i][j][0], temp1[0]);
+                matInvBIm[i][j][0] = _mm512_add_pd(matInvBIm[i][j][0], temp2[0]);
+            }
+
+            // Hermite matrix
+            matInvBRe[j][i][0] = matInvBRe[i][j][0];
+            matInvBIm[j][i][0] = _mm512_sub_pd(constZero, matInvBIm[i][j][0]);
+            
+            matInvBRe[i][j][1] = _mm512_mul_pd(matLRe[j][i][1], matLRe[j][j][1]);
+            matInvBIm[i][j][1] = _mm512_sub_pd(constZero, _mm512_mul_pd(matLIm[j][i][1], matLRe[j][j][1]));
+            
+            for (k = (j+1); k < N_64; k++)
+            {
+                GET_AxBH_double(matLRe[k][j][1], matLIm[k][j][1], matLRe[k][i][1], matLIm[k][i][1], temp1[1], temp2[1]);
+                matInvBRe[i][j][1] = _mm512_add_pd(matInvBRe[i][j][1], temp1[1]);
+                matInvBIm[i][j][1] = _mm512_add_pd(matInvBIm[i][j][1], temp2[1]);
+            }
+            
+            // Hermite matrix
+            matInvBRe[j][i][1] = matInvBRe[i][j][1];
+            matInvBIm[j][i][1] = _mm512_sub_pd(constZero, matInvBIm[i][j][1]);
+        }
+    }
+    
+    gResistO3_5 = _mm512_add_pd(gResistO3_5,_mm512_sub_pd(matInvBRe[0][0][0], matInvBIm[0][0][0]));
+}
+
 void calc_cholesky_avx512_float(int32_t caseid, int32_t N)
 {   
     float in_re[MAX_SIZE] = {0};
@@ -2018,6 +2549,11 @@ void calc_cholesky_avx512_float(int32_t caseid, int32_t N)
             case 32:
             {   
                 matrix_inv_cholesky_32x32(matBRe, matBIm, matInvBRe, matInvBIm);
+                break;
+            }
+            case 64:
+            {   
+                matrix_inv_cholesky_64x64(matBRe, matBIm, matInvBRe, matInvBIm);
                 break;
             }
         }
@@ -2076,10 +2612,20 @@ void calc_cholesky_avx512_double(int32_t caseid, int32_t N)
                 matrix_inv_cholesky_8x8_double(matBRe, matBIm, matInvBRe, matInvBIm);
                 break;
             }
+            case 32:
+            {   
+                matrix_inv_cholesky_32x32_double(matBRe, matBIm, matInvBRe, matInvBIm);
+                break;
+            }
+            case 64:
+            {   
+                matrix_inv_cholesky_64x64_double(matBRe, matBIm, matInvBRe, matInvBIm);
+                break;
+            }
         }
         uint64_t t2 = __rdtsc();
         gCycleCount[caseid][i] = t2-t1;
-        
+
         gResistO3_6 += _mm512_reduce_add_pd(gResistO3_5);
         
     }
@@ -2136,17 +2682,15 @@ int main(int argc, char *argv[])
     calc_cholesky_avx512_float(24, 4);
     calc_cholesky_avx512_float(25, 8);
     calc_cholesky_avx512_float(26, 32);
-    //calc_cholesky_avx512_float(27, 64);
+    calc_cholesky_avx512_float(27, 64);
     
     printf("**************************************************************************************************************\n");
 
     calc_cholesky_avx512_double(28, 4);
     calc_cholesky_avx512_double(29, 8);
+    calc_cholesky_avx512_double(30, 32);
+    calc_cholesky_avx512_double(31, 64);
 
-
-
-
-    
     gResistO3_4 = gResistO3_1 - gResistO3_2 + gResistO3_3 - gResistO3_6;
     printf("**************************************************************************************************************\n");
     printf(" case end \n");
