@@ -36,9 +36,9 @@ void display(int32_t caseid)
         sum = 0;
         for (int32_t i = 0; i < v0.size(); i++)
         {
-            sum += v0[i] / 100;
+            sum += v0[i] / 10;
         }
-        avg = sum / (v0.size()/100);
+        avg = sum / (v0.size()/10);
     }
 
     //auto maxPosition = max_element(v0.begin(), v0.end());
