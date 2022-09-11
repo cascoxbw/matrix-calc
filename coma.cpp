@@ -31,7 +31,7 @@ void display(int32_t caseid)
     
     double sum = std::accumulate(v0.begin(), v0.end(), 0);  
     double avg =  sum / v0.size(); 
-    if (caseid == 31 && NUM_LOOP >= 10000) 
+    if ((caseid == 31 || caseid == 27)&& NUM_LOOP >= 10000) 
     {
         sum = 0;
         for (int32_t i = 0; i < v0.size(); i++)
