@@ -31,7 +31,7 @@ void display(int32_t caseid)
     
     double sum = std::accumulate(v0.begin(), v0.end(), 0);  
     double avg =  sum / v0.size(); 
-    if ((caseid == 31 || caseid == 27)&& NUM_LOOP >= 10000) 
+    if ((caseid == 31 || caseid == 30 || caseid == 27 || caseid == 26)&& NUM_LOOP >= 10000) 
     {
         sum = 0;
         for (int32_t i = 0; i < v0.size(); i++)
@@ -2506,8 +2506,8 @@ void calc_cholesky_avx256_float(int32_t caseid, int32_t N)
         int32_t ran = rand()%50;
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
-            in_re[k] = (k + i + ran)/10;
-            in_im[k] = (k + i + ran)/10;
+            in_re[k] = k + i + ran;
+            in_im[k] = k + i + ran;
         }
         
         __m256 matBRe[MAX_LEN][MAX_LEN][N_2];
@@ -2573,8 +2573,8 @@ void calc_cholesky_avx256_double(int32_t caseid, int32_t N)
         int32_t ran = rand()%50;
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
-            in_re[k] = (k + i + ran)/10;
-            in_im[k] = (k + i + ran)/10;
+            in_re[k] = k + i + ran;
+            in_im[k] = k + i + ran;
         }
         
         __m256d matBRe[MAX_LEN][MAX_LEN][N_4];
