@@ -2537,10 +2537,11 @@ void calc_cholesky_avx256_float(int32_t caseid, int32_t N)
             int32_t ran = rand()%50;
             for (int32_t k=0;k<MAX_LEN;k++)
             {
-                matBRe[i][k][0] = _mm256_load_ps(in_re + i*ran + k*ran);
-                matBIm[i][k][0] = _mm256_load_ps(in_im + i*ran + k*ran);
-                matBRe[i][k][1] = _mm256_load_ps(in_re + i*ran + k*ran);
-                matBIm[i][k][1] = _mm256_load_ps(in_im + i*ran + k*ran);
+                for (int32_t m=0;m<N_2;m++)
+                {
+                    matBRe[i][k][m] = _mm256_load_ps(in_re + i*ran + k*ran);
+                    matBIm[i][k][m] = _mm256_load_ps(in_im + i*ran + k*ran);
+                }
             }
         }
         uint64_t t1 = __rdtsc();
@@ -2603,14 +2604,11 @@ void calc_cholesky_avx256_double(int32_t caseid, int32_t N)
             int32_t ran = rand()%50;
             for (int32_t k=0;k<MAX_LEN;k++)
             {
-                matBRe[i][k][0] = _mm256_load_pd(in_re + i*ran + k*ran);
-                matBIm[i][k][0] = _mm256_load_pd(in_im + i*ran + k*ran);
-                matBRe[i][k][1] = _mm256_load_pd(in_re + i*ran + k*ran);
-                matBIm[i][k][1] = _mm256_load_pd(in_im + i*ran + k*ran);
-                matBRe[i][k][2] = _mm256_load_pd(in_re + i*ran + k*ran);
-                matBIm[i][k][2] = _mm256_load_pd(in_im + i*ran + k*ran);
-                matBRe[i][k][3] = _mm256_load_pd(in_re + i*ran + k*ran);
-                matBIm[i][k][3] = _mm256_load_pd(in_im + i*ran + k*ran);
+                for (int32_t m=0;m<N_4;m++)
+                {
+                    matBRe[i][k][m] = _mm256_load_pd(in_re + i*ran + k*ran);
+                    matBIm[i][k][m] = _mm256_load_pd(in_im + i*ran + k*ran);
+                }
             }
         }
         uint64_t t1 = __rdtsc();
