@@ -1720,16 +1720,15 @@ void matrix_inv_cholesky_8x8_double(__m256d matBRe[MAX_LEN][MAX_LEN][N_4], __m25
     gResistO3_5 += *((double *)&rt);
 }
     
-#if 0
-void matrix_inv_cholesky_32x32(__m256 matBRe[MAX_LEN][MAX_LEN], __m256 matBIm[MAX_LEN][MAX_LEN],
-    __m256 matInvBRe[MAX_LEN][MAX_LEN], __m256 matInvBIm[MAX_LEN][MAX_LEN])
+void matrix_inv_cholesky_32x32(__m256 matBRe[MAX_LEN][MAX_LEN][N_2], __m256 matBIm[MAX_LEN][MAX_LEN][N_2],
+    __m256 matInvBRe[MAX_LEN][MAX_LEN][N_2], __m256 matInvBIm[MAX_LEN][MAX_LEN][N_2])
 {
     // temp matrix and variables for matrix inversion
-    __m256 matGRe[N_32][N_32], matGIm[N_32][N_32];
-    __m256 matLRe[N_32][N_32], matLIm[N_32][N_32];
-    __m256 matD[N_32], matND[N_32];
-    __m256 temp0, temp1, temp2;
-    int32_t i, j, k;
+    __m256 matGRe[N_32][N_32][N_2], matGIm[N_32][N_32][N_2];
+    __m256 matLRe[N_32][N_32][N_2], matLIm[N_32][N_32][N_2];
+    __m256 matD[N_32][N_2], matND[N_32][N_2];
+    __m256 temp0[N_2], temp1[N_2], temp2[N_2];
+    int32_t i, j, k, ii;
 
     /////////////////////////////////// get G, B = G*G', G is a lower triangular matrix
     // Column 0
@@ -1959,47 +1958,54 @@ void matrix_inv_cholesky_32x32(__m256 matBRe[MAX_LEN][MAX_LEN], __m256 matBIm[MA
     /////////////////////////////////// get invB = L'*L
     for(i = 0; i < N_32; i ++)
     {
-        matInvBRe[i][i] = _mm256_mul_ps(matLRe[i][i], matLRe[i][i]);
-        for (k = (i+1); k < N_32; k++)
+        for(ii = 0; ii < N_2; ii ++)
         {
-            temp1 = _mm256_add_ps(_mm256_mul_ps(matLRe[k][i], matLRe[k][i]), _mm256_mul_ps(matLIm[k][i], matLIm[k][i]));
-            matInvBRe[i][i] = _mm256_add_ps(matInvBRe[i][i], temp1);
+            matInvBRe[i][i][ii] = _mm256_mul_ps(matLRe[i][i][ii], matLRe[i][i][ii]);
+            for (k = (i+1); k < N_32; k++)
+            {
+                temp1[ii] = _mm256_add_ps(_mm256_mul_ps(matLRe[k][i][ii], matLRe[k][i][ii]), _mm256_mul_ps(matLIm[k][i][ii], matLIm[k][i][ii]));
+                matInvBRe[i][i][ii] = _mm256_add_ps(matInvBRe[i][i][ii], temp1[ii]);
+            }
+            matInvBIm[i][i][ii] = _mm256_setzero_ps();
         }
-        matInvBIm[i][i] = _mm256_setzero_ps();
     }
 
     for(i = 0; i < N_32; i ++)
     {
         for(j = i+1; j < N_32; j ++)
         {
-            matInvBRe[i][j] = _mm256_mul_ps(matLRe[j][i], matLRe[j][j]);
-            matInvBIm[i][j] = _mm256_sub_ps(constZero, _mm256_mul_ps(matLIm[j][i], matLRe[j][j]));
-
-            for (k = (j+1); k < N_32; k++)
+            for(ii = 0; ii < N_2; ii ++)
             {
-                GET_AxBH(matLRe[k][j], matLIm[k][j], matLRe[k][i], matLIm[k][i], temp1, temp2);
-                matInvBRe[i][j] = _mm256_add_ps(matInvBRe[i][j], temp1);
-                matInvBIm[i][j] = _mm256_add_ps(matInvBIm[i][j], temp2);
+                matInvBRe[i][j][ii] = _mm256_mul_ps(matLRe[j][i][ii], matLRe[j][j][ii]);
+                matInvBIm[i][j][ii] = _mm256_sub_ps(constZero, _mm256_mul_ps(matLIm[j][i][ii], matLRe[j][j][ii]));
+                
+                for (k = (j+1); k < N_32; k++)
+                {
+                    GET_AxBH_double(matLRe[k][j][ii], matLIm[k][j][ii], matLRe[k][i][ii], matLIm[k][i][ii], temp1[ii], temp2[ii]);
+                    matInvBRe[i][j][ii] = _mm256_add_ps(matInvBRe[i][j][ii], temp1[ii]);
+                    matInvBIm[i][j][ii] = _mm256_add_ps(matInvBIm[i][j][ii], temp2[ii]);
+                }
+                
+                // Hermite matrix
+                matInvBRe[j][i][ii] = matInvBRe[i][j][ii];
+                matInvBIm[j][i][ii] = _mm256_sub_ps(constZero, matInvBIm[i][j][ii]);
             }
-
-            // Hermite matrix
-            matInvBRe[j][i] = matInvBRe[i][j];
-            matInvBIm[j][i] = _mm256_sub_ps(constZero, matInvBIm[i][j]);
         }
     }
     
-    gResistO3_5 = _mm256_add_ps(gResistO3_5,_mm256_sub_ps(matInvBRe[0][0], matInvBIm[0][0]));
+    __m256 rt = _mm256_sub_ps(matInvBRe[0][0][0], matInvBIm[0][0][0]);
+    gResistO3_5 += *((double *)&rt);
 }
 
-void matrix_inv_cholesky_32x32_double(__m256 matBRe[MAX_LEN][MAX_LEN][2], __m256 matBIm[MAX_LEN][MAX_LEN][2],
-    __m256 matInvBRe[MAX_LEN][MAX_LEN][2], __m256 matInvBIm[MAX_LEN][MAX_LEN][2])
+void matrix_inv_cholesky_32x32_double(__m256d matBRe[MAX_LEN][MAX_LEN][N_4], __m256d matBIm[MAX_LEN][MAX_LEN][N_4],
+    __m256d matInvBRe[MAX_LEN][MAX_LEN][N_4], __m256d matInvBIm[MAX_LEN][MAX_LEN][N_4])
 {
     // temp matrix and variables for matrix inversion
-    __m256 matGRe[N_32][N_32][2], matGIm[N_32][N_32][2];
-    __m256 matLRe[N_32][N_32][2], matLIm[N_32][N_32][2];
-    __m256 matD[N_32][2], matND[N_32][2];
-    __m256 temp0[2], temp1[2], temp2[2];
-    int32_t i, j, k;
+    __m256d matGRe[N_32][N_32][N_4], matGIm[N_32][N_32][N_4];
+    __m256d matLRe[N_32][N_32][N_4], matLIm[N_32][N_32][N_4];
+    __m256d matD[N_32][N_4], matND[N_32][N_4];
+    __m256d temp0[N_4], temp1[N_4], temp2[N_4];
+    int32_t i, j, k, ii;
 
     /////////////////////////////////// get G, B = G*G', G is a lower triangular matrix
     // Column 0
@@ -2229,69 +2235,54 @@ void matrix_inv_cholesky_32x32_double(__m256 matBRe[MAX_LEN][MAX_LEN][2], __m256
     /////////////////////////////////// get invB = L'*L
     for(i = 0; i < N_32; i ++)
     {
-        matInvBRe[i][i][0] = _mm256_mul_pd(matLRe[i][i][0], matLRe[i][i][0]);
-        for (k = (i+1); k < N_32; k++)
+        for(ii = 0; ii < N_4; ii ++)
         {
-            temp1[0] = _mm256_add_pd(_mm256_mul_pd(matLRe[k][i][0], matLRe[k][i][0]), _mm256_mul_pd(matLIm[k][i][0], matLIm[k][i][0]));
-            matInvBRe[i][i][0] = _mm256_add_pd(matInvBRe[i][i][0], temp1[0]);
+            matInvBRe[i][i][ii] = _mm256_mul_pd(matLRe[i][i][ii], matLRe[i][i][ii]);
+            for (k = (i+1); k < N_32; k++)
+            {
+                temp1[ii] = _mm256_add_pd(_mm256_mul_pd(matLRe[k][i][ii], matLRe[k][i][ii]), _mm256_mul_pd(matLIm[k][i][ii], matLIm[k][i][ii]));
+                matInvBRe[i][i][ii] = _mm256_add_pd(matInvBRe[i][i][ii], temp1[ii]);
+            }
+            matInvBIm[i][i][ii] = _mm256_setzero_pd();
         }
-        matInvBIm[i][i][0] = _mm256_setzero_pd();
-        
-        matInvBRe[i][i][1] = _mm256_mul_pd(matLRe[i][i][1], matLRe[i][i][1]);
-        for (k = (i+1); k < N_32; k++)
-        {
-            temp1[1] = _mm256_add_pd(_mm256_mul_pd(matLRe[k][i][1], matLRe[k][i][1]), _mm256_mul_pd(matLIm[k][i][1], matLIm[k][i][1]));
-            matInvBRe[i][i][1] = _mm256_add_pd(matInvBRe[i][i][1], temp1[1]);
-        }
-        matInvBIm[i][i][1] = _mm256_setzero_pd();
     }
 
     for(i = 0; i < N_32; i ++)
     {
         for(j = i+1; j < N_32; j ++)
         {
-            matInvBRe[i][j][0] = _mm256_mul_pd(matLRe[j][i][0], matLRe[j][j][0]);
-            matInvBIm[i][j][0] = _mm256_sub_pd(constZero, _mm256_mul_pd(matLIm[j][i][0], matLRe[j][j][0]));
-
-            for (k = (j+1); k < N_32; k++)
+            for(ii = 0; ii < N_4; ii ++)
             {
-                GET_AxBH_double(matLRe[k][j][0], matLIm[k][j][0], matLRe[k][i][0], matLIm[k][i][0], temp1[0], temp2[0]);
-                matInvBRe[i][j][0] = _mm256_add_pd(matInvBRe[i][j][0], temp1[0]);
-                matInvBIm[i][j][0] = _mm256_add_pd(matInvBIm[i][j][0], temp2[0]);
+                matInvBRe[i][j][ii] = _mm256_mul_pd(matLRe[j][i][ii], matLRe[j][j][ii]);
+                matInvBIm[i][j][ii] = _mm256_sub_pd(constZero, _mm256_mul_pd(matLIm[j][i][ii], matLRe[j][j][ii]));
+                
+                for (k = (j+1); k < N_32; k++)
+                {
+                    GET_AxBH_double(matLRe[k][j][ii], matLIm[k][j][ii], matLRe[k][i][ii], matLIm[k][i][ii], temp1[ii], temp2[ii]);
+                    matInvBRe[i][j][ii] = _mm256_add_pd(matInvBRe[i][j][ii], temp1[ii]);
+                    matInvBIm[i][j][ii] = _mm256_add_pd(matInvBIm[i][j][ii], temp2[ii]);
+                }
+                
+                // Hermite matrix
+                matInvBRe[j][i][ii] = matInvBRe[i][j][ii];
+                matInvBIm[j][i][ii] = _mm256_sub_pd(constZero, matInvBIm[i][j][ii]);
             }
-
-            // Hermite matrix
-            matInvBRe[j][i][0] = matInvBRe[i][j][0];
-            matInvBIm[j][i][0] = _mm256_sub_pd(constZero, matInvBIm[i][j][0]);
-            
-            matInvBRe[i][j][1] = _mm256_mul_pd(matLRe[j][i][1], matLRe[j][j][1]);
-            matInvBIm[i][j][1] = _mm256_sub_pd(constZero, _mm256_mul_pd(matLIm[j][i][1], matLRe[j][j][1]));
-            
-            for (k = (j+1); k < N_32; k++)
-            {
-                GET_AxBH_double(matLRe[k][j][1], matLIm[k][j][1], matLRe[k][i][1], matLIm[k][i][1], temp1[1], temp2[1]);
-                matInvBRe[i][j][1] = _mm256_add_pd(matInvBRe[i][j][1], temp1[1]);
-                matInvBIm[i][j][1] = _mm256_add_pd(matInvBIm[i][j][1], temp2[1]);
-            }
-            
-            // Hermite matrix
-            matInvBRe[j][i][1] = matInvBRe[i][j][1];
-            matInvBIm[j][i][1] = _mm256_sub_pd(constZero, matInvBIm[i][j][1]);
         }
     }
     
-    gResistO3_5 = _mm256_add_pd(gResistO3_5,_mm256_sub_pd(matInvBRe[0][0][0], matInvBIm[0][0][0]));
+    __m256d rt = _mm256_sub_pd(matInvBRe[0][0][0], matInvBIm[0][0][0]);
+    gResistO3_5 += *((double *)&rt);
 }
     
-void matrix_inv_cholesky_64x64(__m256 matBRe[MAX_LEN][MAX_LEN], __m256 matBIm[MAX_LEN][MAX_LEN],
-    __m256 matInvBRe[MAX_LEN][MAX_LEN], __m256 matInvBIm[MAX_LEN][MAX_LEN])
+void matrix_inv_cholesky_64x64(__m256 matBRe[MAX_LEN][MAX_LEN][N_2], __m256 matBIm[MAX_LEN][MAX_LEN][N_2],
+    __m256 matInvBRe[MAX_LEN][MAX_LEN][N_2], __m256 matInvBIm[MAX_LEN][MAX_LEN][N_2])
 {
     // temp matrix and variables for matrix inversion
-    __m256 matGRe[N_64][N_64], matGIm[N_64][N_64];
-    __m256 matLRe[N_64][N_64], matLIm[N_64][N_64];
-    __m256 matD[N_64], matND[N_64];
-    __m256 temp0, temp1, temp2;
-    int32_t i, j, k;
+    __m256 matGRe[N_64][N_64][N_2], matGIm[N_64][N_64][N_2];
+    __m256 matLRe[N_64][N_64][N_2], matLIm[N_64][N_64][N_2];
+    __m256 matD[N_64][N_2], matND[N_64][N_2];
+    __m256 temp0[N_2], temp1[N_2], temp2[N_2];
+    int32_t i, j, k, ii;
 
     /////////////////////////////////// get G, B = G*G', G is a lower triangular matrix
     // Column 0
@@ -2355,47 +2346,54 @@ void matrix_inv_cholesky_64x64(__m256 matBRe[MAX_LEN][MAX_LEN], __m256 matBIm[MA
     /////////////////////////////////// get invB = L'*L
     for(i = 0; i < N_64; i ++)
     {
-        matInvBRe[i][i] = _mm256_mul_ps(matLRe[i][i], matLRe[i][i]);
-        for (k = (i+1); k < N_64; k++)
+        for(ii = 0; ii < N_2; ii ++)
         {
-            temp1 = _mm256_add_ps(_mm256_mul_ps(matLRe[k][i], matLRe[k][i]), _mm256_mul_ps(matLIm[k][i], matLIm[k][i]));
-            matInvBRe[i][i] = _mm256_add_ps(matInvBRe[i][i], temp1);
+            matInvBRe[i][i][ii] = _mm256_mul_ps(matLRe[i][i][ii], matLRe[i][i][ii]);
+            for (k = (i+1); k < N_64; k++)
+            {
+                temp1[ii] = _mm256_add_ps(_mm256_mul_ps(matLRe[k][i][ii], matLRe[k][i][ii]), _mm256_mul_ps(matLIm[k][i][ii], matLIm[k][i][ii]));
+                matInvBRe[i][i][ii] = _mm256_add_ps(matInvBRe[i][i][ii], temp1[ii]);
+            }
+            matInvBIm[i][i][ii] = _mm256_setzero_ps();
         }
-        matInvBIm[i][i] = _mm256_setzero_ps();
     }
 
     for(i = 0; i < N_64; i ++)
     {
         for(j = i+1; j < N_64; j ++)
         {
-            matInvBRe[i][j] = _mm256_mul_ps(matLRe[j][i], matLRe[j][j]);
-            matInvBIm[i][j] = _mm256_sub_ps(constZero, _mm256_mul_ps(matLIm[j][i], matLRe[j][j]));
-
-            for (k = (j+1); k < N_64; k++)
+            for(ii = 0; ii < N_2; ii ++)
             {
-                GET_AxBH(matLRe[k][j], matLIm[k][j], matLRe[k][i], matLIm[k][i], temp1, temp2);
-                matInvBRe[i][j] = _mm256_add_ps(matInvBRe[i][j], temp1);
-                matInvBIm[i][j] = _mm256_add_ps(matInvBIm[i][j], temp2);
+                matInvBRe[i][j][ii] = _mm256_mul_ps(matLRe[j][i][ii], matLRe[j][j][ii]);
+                matInvBIm[i][j][ii] = _mm256_sub_ps(constZero, _mm256_mul_ps(matLIm[j][i][ii], matLRe[j][j][ii]));
+                
+                for (k = (j+1); k < N_64; k++)
+                {
+                    GET_AxBH_double(matLRe[k][j][ii], matLIm[k][j][ii], matLRe[k][i][ii], matLIm[k][i][ii], temp1[ii], temp2[ii]);
+                    matInvBRe[i][j][ii] = _mm256_add_ps(matInvBRe[i][j][ii], temp1[ii]);
+                    matInvBIm[i][j][ii] = _mm256_add_ps(matInvBIm[i][j][ii], temp2[ii]);
+                }
+                
+                // Hermite matrix
+                matInvBRe[j][i][ii] = matInvBRe[i][j][ii];
+                matInvBIm[j][i][ii] = _mm256_sub_ps(constZero, matInvBIm[i][j][ii]);
             }
-
-            // Hermite matrix
-            matInvBRe[j][i] = matInvBRe[i][j];
-            matInvBIm[j][i] = _mm256_sub_ps(constZero, matInvBIm[i][j]);
         }
     }
     
-    gResistO3_5 = _mm256_add_ps(gResistO3_5,_mm256_sub_ps(matInvBRe[0][0], matInvBIm[0][0]));
+    __m256 rt = _mm256_sub_ps(matInvBRe[0][0][0], matInvBIm[0][0][0]);
+    gResistO3_5 += *((double *)&rt);
 }
 
-void matrix_inv_cholesky_64x64_double(__m256 matBRe[MAX_LEN][MAX_LEN][2], __m256 matBIm[MAX_LEN][MAX_LEN][2],
-    __m256 matInvBRe[MAX_LEN][MAX_LEN][2], __m256 matInvBIm[MAX_LEN][MAX_LEN][2])
+void matrix_inv_cholesky_64x64_double(__m256d matBRe[MAX_LEN][MAX_LEN][N_4], __m256d matBIm[MAX_LEN][MAX_LEN][N_4],
+    __m256d matInvBRe[MAX_LEN][MAX_LEN][N_4], __m256d matInvBIm[MAX_LEN][MAX_LEN][N_4])
 {
     // temp matrix and variables for matrix inversion
-    __m256 matGRe[N_64][N_64][2], matGIm[N_64][N_64][2];
-    __m256 matLRe[N_64][N_64][2], matLIm[N_64][N_64][2];
-    __m256 matD[N_64][2], matND[N_64][2];
-    __m256 temp0[2], temp1[2], temp2[2];
-    int32_t i, j, k;
+    __m256d matGRe[N_64][N_64][N_4], matGIm[N_64][N_64][N_4];
+    __m256d matLRe[N_64][N_64][N_4], matLIm[N_64][N_64][N_4];
+    __m256d matD[N_64][N_4], matND[N_64][N_4];
+    __m256d temp0[N_4], temp1[N_4], temp2[N_4];
+    int32_t i, j, k, ii;
 
     /////////////////////////////////// get G, B = G*G', G is a lower triangular matrix
     // Column 0
@@ -2459,60 +2457,45 @@ void matrix_inv_cholesky_64x64_double(__m256 matBRe[MAX_LEN][MAX_LEN][2], __m256
     /////////////////////////////////// get invB = L'*L
     for(i = 0; i < N_64; i ++)
     {
-        matInvBRe[i][i][0] = _mm256_mul_pd(matLRe[i][i][0], matLRe[i][i][0]);
-        for (k = (i+1); k < N_64; k++)
+        for(ii = 0; ii < N_4; ii ++)
         {
-            temp1[0] = _mm256_add_pd(_mm256_mul_pd(matLRe[k][i][0], matLRe[k][i][0]), _mm256_mul_pd(matLIm[k][i][0], matLIm[k][i][0]));
-            matInvBRe[i][i][0] = _mm256_add_pd(matInvBRe[i][i][0], temp1[0]);
+            matInvBRe[i][i][ii] = _mm256_mul_pd(matLRe[i][i][ii], matLRe[i][i][ii]);
+            for (k = (i+1); k < N_64; k++)
+            {
+                temp1[ii] = _mm256_add_pd(_mm256_mul_pd(matLRe[k][i][ii], matLRe[k][i][ii]), _mm256_mul_pd(matLIm[k][i][ii], matLIm[k][i][ii]));
+                matInvBRe[i][i][ii] = _mm256_add_pd(matInvBRe[i][i][ii], temp1[ii]);
+            }
+            matInvBIm[i][i][ii] = _mm256_setzero_pd();
         }
-        matInvBIm[i][i][0] = _mm256_setzero_pd();
-        
-        matInvBRe[i][i][1] = _mm256_mul_pd(matLRe[i][i][1], matLRe[i][i][1]);
-        for (k = (i+1); k < N_64; k++)
-        {
-            temp1[1] = _mm256_add_pd(_mm256_mul_pd(matLRe[k][i][1], matLRe[k][i][1]), _mm256_mul_pd(matLIm[k][i][1], matLIm[k][i][1]));
-            matInvBRe[i][i][1] = _mm256_add_pd(matInvBRe[i][i][1], temp1[1]);
-        }
-        matInvBIm[i][i][1] = _mm256_setzero_pd();
     }
 
     for(i = 0; i < N_64; i ++)
     {
         for(j = i+1; j < N_64; j ++)
         {
-            matInvBRe[i][j][0] = _mm256_mul_pd(matLRe[j][i][0], matLRe[j][j][0]);
-            matInvBIm[i][j][0] = _mm256_sub_pd(constZero, _mm256_mul_pd(matLIm[j][i][0], matLRe[j][j][0]));
-
-            for (k = (j+1); k < N_64; k++)
+            for(ii = 0; ii < N_4; ii ++)
             {
-                GET_AxBH_double(matLRe[k][j][0], matLIm[k][j][0], matLRe[k][i][0], matLIm[k][i][0], temp1[0], temp2[0]);
-                matInvBRe[i][j][0] = _mm256_add_pd(matInvBRe[i][j][0], temp1[0]);
-                matInvBIm[i][j][0] = _mm256_add_pd(matInvBIm[i][j][0], temp2[0]);
+                matInvBRe[i][j][ii] = _mm256_mul_pd(matLRe[j][i][ii], matLRe[j][j][ii]);
+                matInvBIm[i][j][ii] = _mm256_sub_pd(constZero, _mm256_mul_pd(matLIm[j][i][ii], matLRe[j][j][ii]));
+                
+                for (k = (j+1); k < N_64; k++)
+                {
+                    GET_AxBH_double(matLRe[k][j][ii], matLIm[k][j][ii], matLRe[k][i][ii], matLIm[k][i][ii], temp1[ii], temp2[ii]);
+                    matInvBRe[i][j][ii] = _mm256_add_pd(matInvBRe[i][j][ii], temp1[ii]);
+                    matInvBIm[i][j][ii] = _mm256_add_pd(matInvBIm[i][j][ii], temp2[ii]);
+                }
+                
+                // Hermite matrix
+                matInvBRe[j][i][ii] = matInvBRe[i][j][ii];
+                matInvBIm[j][i][ii] = _mm256_sub_pd(constZero, matInvBIm[i][j][ii]);
             }
-
-            // Hermite matrix
-            matInvBRe[j][i][0] = matInvBRe[i][j][0];
-            matInvBIm[j][i][0] = _mm256_sub_pd(constZero, matInvBIm[i][j][0]);
-            
-            matInvBRe[i][j][1] = _mm256_mul_pd(matLRe[j][i][1], matLRe[j][j][1]);
-            matInvBIm[i][j][1] = _mm256_sub_pd(constZero, _mm256_mul_pd(matLIm[j][i][1], matLRe[j][j][1]));
-            
-            for (k = (j+1); k < N_64; k++)
-            {
-                GET_AxBH_double(matLRe[k][j][1], matLIm[k][j][1], matLRe[k][i][1], matLIm[k][i][1], temp1[1], temp2[1]);
-                matInvBRe[i][j][1] = _mm256_add_pd(matInvBRe[i][j][1], temp1[1]);
-                matInvBIm[i][j][1] = _mm256_add_pd(matInvBIm[i][j][1], temp2[1]);
-            }
-            
-            // Hermite matrix
-            matInvBRe[j][i][1] = matInvBRe[i][j][1];
-            matInvBIm[j][i][1] = _mm256_sub_pd(constZero, matInvBIm[i][j][1]);
         }
     }
     
-    gResistO3_5 = _mm256_add_pd(gResistO3_5,_mm256_sub_pd(matInvBRe[0][0][0], matInvBIm[0][0][0]));
+    __m256d rt = _mm256_sub_pd(matInvBRe[0][0][0], matInvBIm[0][0][0]);
+    gResistO3_5 += *((double *)&rt);
 }
-#endif
+
 void calc_cholesky_avx256_float(int32_t caseid, int32_t N)
 {   
     float in_re[MAX_SIZE] = {0};
@@ -2523,8 +2506,8 @@ void calc_cholesky_avx256_float(int32_t caseid, int32_t N)
         int32_t ran = rand()%50;
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
-            in_re[k] = k + i + ran;
-            in_im[k] = k + i + ran;
+            in_re[k] = (k + i + ran)/10;
+            in_im[k] = (k + i + ran)/10;
         }
         
         __m256 matBRe[MAX_LEN][MAX_LEN][N_2];
@@ -2559,12 +2542,12 @@ void calc_cholesky_avx256_float(int32_t caseid, int32_t N)
             }
             case 32:
             {   
-                //matrix_inv_cholesky_32x32(matBRe, matBIm, matInvBRe, matInvBIm);
+                matrix_inv_cholesky_32x32(matBRe, matBIm, matInvBRe, matInvBIm);
                 break;
             }
             case 64:
             {   
-                //matrix_inv_cholesky_64x64(matBRe, matBIm, matInvBRe, matInvBIm);
+                matrix_inv_cholesky_64x64(matBRe, matBIm, matInvBRe, matInvBIm);
                 break;
             }
         }
@@ -2590,8 +2573,8 @@ void calc_cholesky_avx256_double(int32_t caseid, int32_t N)
         int32_t ran = rand()%50;
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
-            in_re[k] = k + i + ran;
-            in_im[k] = k + i + ran;
+            in_re[k] = (k + i + ran)/10;
+            in_im[k] = (k + i + ran)/10;
         }
         
         __m256d matBRe[MAX_LEN][MAX_LEN][N_4];
@@ -2626,12 +2609,12 @@ void calc_cholesky_avx256_double(int32_t caseid, int32_t N)
             }
             case 32:
             {   
-                //matrix_inv_cholesky_32x32_double(matBRe, matBIm, matInvBRe, matInvBIm);
+                matrix_inv_cholesky_32x32_double(matBRe, matBIm, matInvBRe, matInvBIm);
                 break;
             }
             case 64:
             {   
-                //matrix_inv_cholesky_64x64_double(matBRe, matBIm, matInvBRe, matInvBIm);
+                matrix_inv_cholesky_64x64_double(matBRe, matBIm, matInvBRe, matInvBIm);
                 break;
             }
         }
