@@ -431,7 +431,8 @@ static __m256 constZero = _mm256_setzero_ps();
 
 __m256d _mm256_rsqrt_pd(__m256d a)
 {
-     return _mm256_maskz_rsqrt14_pd(0xFF, a);
+     //return _mm256_maskz_rsqrt14_pd(0xFF, a);
+     return _mm256_rsqrt_ps(a);
 }
 
 // complex multiplication: A * A'
