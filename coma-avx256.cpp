@@ -431,7 +431,7 @@ static __m256 constZero = _mm256_setzero_ps();
 
 __m256d _mm256_rsqrt_pd(__m256d a)
 {
-     //return _mm256_maskz_rsqrt14_pd(0xFF, a);
+     //return _mm256_maskz_rsqrt14_pd(0xFF, a); // not support (Raptor Lake with Atom cores) 
      return _mm256_rsqrt_ps(a);
 }
 
@@ -806,7 +806,7 @@ __m256d _mm256_rsqrt_pd(__m256d a)
         matGRe[5][5][ii] = _mm256_sub_pd(matGRe[5][5][ii], temp0[ii]);\
         matGRe[5][5][ii] = _mm256_sub_pd(matGRe[5][5][ii], temp1[ii]);\
         matGRe[5][5][ii] = _mm256_sub_pd(matGRe[5][5][ii], temp2[ii]);\
-        matD[5][ii] = _mm256_rsqrt14_pd(matGRe[5][5][ii]);\
+        matD[5][ii] = _mm256_rsqrt_pd(matGRe[5][5][ii]);\
         matND[5][ii] = _mm256_sub_pd(constZero, matD[5][ii]);\
     }\
 }
@@ -859,7 +859,7 @@ __m256d _mm256_rsqrt_pd(__m256d a)
         GET_AxAH_double(matGRe[6][5][ii], matGIm[6][5][ii], temp1[ii]);\
         matGRe[6][6][ii] = _mm256_sub_pd(matGRe[6][6][ii], temp0[ii]);\
         matGRe[6][6][ii] = _mm256_sub_pd(matGRe[6][6][ii], temp1[ii]);\
-        matD[6][ii] = _mm256_rsqrt14_pd(matGRe[6][6][ii]);\
+        matD[6][ii] = _mm256_rsqrt_pd(matGRe[6][6][ii]);\
         matND[6][ii] = _mm256_sub_pd(constZero, matD[6][ii]);\
     }\
 }
