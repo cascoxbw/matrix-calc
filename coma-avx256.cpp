@@ -17,7 +17,7 @@ typedef unsigned long uint64_t;
 #define NUM_CASE            32
 #define NUM_LOOP            10000
 
-int32_t gCycleCount[NUM_CASE][NUM_LOOP];
+uint64_t gCycleCount[NUM_CASE][NUM_LOOP];
 double gResistO3[NUM_CASE][NUM_LOOP];
 double gResistO3_1 = 0;
 double gResistO3_2 = 0;
@@ -26,11 +26,11 @@ double gResistO3_4 = 0;
 
 void display(int32_t caseid)
 {
-    std::vector<int32_t> v0(gCycleCount[caseid],gCycleCount[caseid]+NUM_LOOP);
+    std::vector<uint64_t> v0(gCycleCount[caseid],gCycleCount[caseid]+NUM_LOOP);
     std::sort(v0.begin(), v0.end());
     
-    double sum = std::accumulate(v0.begin(), v0.end(), 0);  
-    double avg =  sum / v0.size(); 
+    uint64_t sum = std::accumulate(v0.begin(), v0.end(), 0);  
+    uint64_t avg =  sum / v0.size(); 
     if ((caseid == 31 || caseid == 30 || caseid == 27 || caseid == 26)&& NUM_LOOP >= 10000) 
     {
         sum = 0;
@@ -45,7 +45,7 @@ void display(int32_t caseid)
     //auto minPosition = min_element(v0.begin(), v0.end());
     
     
-    printf(" case %d: cycle total=%d, loop num=%zu, cycle avg=%d, cycle 95=%d, cycle 99=%d, cycle 100=%d\n", caseid, (int32_t)sum, v0.size(), (int32_t)avg, v0[NUM_LOOP*0.95], v0[NUM_LOOP*0.99], v0[NUM_LOOP*0.999]);
+    printf(" case %d: cycle total=%lu, loop num=%zu, cycle avg=%lu, cycle 95=%lu, cycle 99=%lu, cycle 100=%lu\n", caseid, sum, v0.size(), avg, v0[NUM_LOOP*0.95], v0[NUM_LOOP*0.99], v0[NUM_LOOP*0.999]);
     //sleep(5);
 }
 
@@ -55,22 +55,24 @@ void vec_single_mul256_conj(float single_value_re,float single_value_im, float* 
     __m256 single_vec_re = _mm256_set1_ps(single_value_re);
     __m256 single_vec_im = _mm256_set1_ps(single_value_im);
 
-    if (len < DATA256Float_LOOP) //4*4
+    /*if (len < DATA256Float_LOOP) //4*4
     {
         __m256 re = _mm256_add_ps(_mm256_mul_ps(single_vec_re,_mm256_load_ps(input_vec_re)),_mm256_mul_ps(single_vec_im,_mm256_load_ps(input_vec_im)));
         __m256 im = _mm256_sub_ps(_mm256_mul_ps(single_vec_re,_mm256_load_ps(input_vec_im)),_mm256_mul_ps(single_vec_im,_mm256_load_ps(input_vec_re)));
         *(__m256*)(output_vec_re) = re;
         *(__m256*)(output_vec_im) = im;
     }
-    else
+    else*/
     {
         int32_t loop = len / DATA256Float_LOOP;
-        for(int32_t i = 0; i < loop ; i++)
+        if (len < DATA256Float_LOOP) loop = 1;
+        for(int32_t i = 0; i < loop * 2; i++)
         {
             __m256 re = _mm256_add_ps(_mm256_mul_ps(single_vec_re,_mm256_load_ps(input_vec_re + i * DATA256Float_LOOP)),_mm256_mul_ps(single_vec_im,_mm256_load_ps(input_vec_im + i * DATA256Float_LOOP)));
             __m256 im = _mm256_sub_ps(_mm256_mul_ps(single_vec_re,_mm256_load_ps(input_vec_im + i * DATA256Float_LOOP)),_mm256_mul_ps(single_vec_im,_mm256_load_ps(input_vec_re + i * DATA256Float_LOOP)));
             *(__m256*)(output_vec_re + i * DATA256Float_LOOP) = re;
             *(__m256*)(output_vec_im + i * DATA256Float_LOOP) = im;
+            gResistO3_1 += *(output_vec_re+i*len) + *(output_vec_im+i*len);
         }
     }
 }
@@ -82,12 +84,13 @@ void vec_single_mul256_conj_double(double single_value_re,double single_value_im
     __m256d single_vec_im = _mm256_set1_pd(single_value_im);
     
     int32_t loop = len / DATA256Double_LOOP;
-    for(int32_t i = 0; i < loop ; i++)
+    for(int32_t i = 0; i < loop * 2; i++)
     {
         __m256d re = _mm256_add_pd(_mm256_mul_pd(single_vec_re,_mm256_load_pd(input_vec_re + i * DATA256Double_LOOP)),_mm256_mul_pd(single_vec_im,_mm256_load_pd(input_vec_im + i * DATA256Double_LOOP)));
         __m256d im = _mm256_sub_pd(_mm256_mul_pd(single_vec_re,_mm256_load_pd(input_vec_im + i * DATA256Double_LOOP)),_mm256_mul_pd(single_vec_im,_mm256_load_pd(input_vec_re + i * DATA256Double_LOOP)));
         *(__m256d*)(output_vec_re + i * DATA256Double_LOOP) = re;
         *(__m256d*)(output_vec_im + i * DATA256Double_LOOP) = im;
+        gResistO3_1 += *(output_vec_re+i*len) + *(output_vec_im+i*len);
     }
 }
 
@@ -129,7 +132,7 @@ void calc_coma_avx256_float(int32_t caseid, int32_t N)
         int32_t ran = rand()%50;
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
-            in_re[k]  = k + i + ran;
+            in_re[k]  = k + i - ran;
             in_im[k]  = k + i + ran;
         }
         
@@ -156,7 +159,7 @@ void calc_coma_avx256_double(int32_t caseid, int32_t N)
         int32_t ran = rand()%50;
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
-            in_re_d[k]  = k + i + ran;
+            in_re_d[k]  = k + i - ran;
             in_im_d[k]  = k + i + ran;
         }
         
@@ -174,7 +177,7 @@ void calc_coma_avx256_double(int32_t caseid, int32_t N)
 
 void kron(float* in_re1, float* in_im1,float* in_re2, float* in_im2, int32_t len)
 {
-    if(len<DATA256Float_LOOP) //4*4
+    /*if(len<DATA256Float_LOOP) //4*4
     {
         for(int32_t i = 0; i < len; i++)
         {
@@ -196,10 +199,10 @@ void kron(float* in_re1, float* in_im1,float* in_re2, float* in_im2, int32_t len
                            *(in_im2+(i+len)*len) + *(in_im2+(i+len)*len+len);
         }
     }
-    else
+    else*/
     {
-        int32_t loop = len/DATA256Float_LOOP;
-            
+        int32_t loop = len/DATA256Float_LOOP * 2;
+        if (len < DATA256Float_LOOP) loop = 2;
         for(int32_t i = 0; i < len; i++)
         {
             for(int32_t j = 0; j < loop; j++)
@@ -210,8 +213,7 @@ void kron(float* in_re1, float* in_im1,float* in_re2, float* in_im2, int32_t len
             *(__m256*)(in_im2+i*len*2+j*DATA256Float_LOOP) = _mm256_load_ps(in_im1+i*len+j*DATA256Float_LOOP);
             for(int32_t j = 0; j < loop; j++)
             *(__m256*)(in_im2+i*len*2+j*DATA256Float_LOOP+len) = _mm256_setzero_ps();
-            gResistO3_2 += *(in_re2+i*len) + *(in_re2+i*len+len) + 
-                           *(in_im2+i*len) + *(in_im2+i*len+len);
+            gResistO3_2 += *(in_re2+i*len) + *(in_im2+i*len);
         }
          
         for(int32_t i = 0; i < len; i++)
@@ -224,8 +226,7 @@ void kron(float* in_re1, float* in_im1,float* in_re2, float* in_im2, int32_t len
             *(__m256*)(in_im2+(i+len)*len*2+j*DATA256Float_LOOP) = _mm256_setzero_ps();
             for(int32_t j = 0; j < loop; j++)
             *(__m256*)(in_im2+(i+len)*len*2+j*DATA256Float_LOOP+len) = _mm256_load_ps(in_im1+i*len+j*DATA256Float_LOOP);
-            gResistO3_2 += *(in_re2+(i+len)*len) + *(in_re2+(i+len)*len+len) + 
-                           *(in_im2+(i+len)*len) + *(in_im2+(i+len)*len+len);
+            gResistO3_2 += *(in_re2+(i+len)*len) + *(in_im2+(i+len)*len+len);
         }
                 
     }
@@ -233,7 +234,7 @@ void kron(float* in_re1, float* in_im1,float* in_re2, float* in_im2, int32_t len
 
 void kron_double(double* in_re1, double* in_im1,double* in_re2, double* in_im2, int32_t len)
 {    
-    int32_t loop = len/DATA256Double_LOOP;
+    int32_t loop = len/DATA256Double_LOOP * 2;
         
     for(int32_t i = 0; i < len; i++)
     {
@@ -245,8 +246,7 @@ void kron_double(double* in_re1, double* in_im1,double* in_re2, double* in_im2, 
         *(__m256d*)(in_im2+i*len*2+j*DATA256Double_LOOP) = _mm256_load_pd(in_im1+i*len+j*DATA256Double_LOOP);
         for(int32_t j = 0; j < loop; j++)
         *(__m256d*)(in_im2+i*len*2+j*DATA256Double_LOOP+len) = _mm256_setzero_pd();
-        gResistO3_2 += *(in_re2+i*len) + *(in_re2+i*len+len) + 
-                       *(in_im2+i*len) + *(in_im2+i*len+len);
+        gResistO3_2 += *(in_re2+i*len) + *(in_im2+i*len+len);
     }
      
     for(int32_t i = 0; i < len; i++)
@@ -259,24 +259,23 @@ void kron_double(double* in_re1, double* in_im1,double* in_re2, double* in_im2, 
         *(__m256d*)(in_im2+(i+len)*len*2+j*DATA256Double_LOOP) = _mm256_setzero_pd();
         for(int32_t j = 0; j < loop; j++)
         *(__m256d*)(in_im2+(i+len)*len*2+j*DATA256Double_LOOP+len) = _mm256_load_pd(in_im1+i*len+j*DATA256Double_LOOP);
-        gResistO3_2 += *(in_re2+(i+len)*len) + *(in_re2+(i+len)*len+len) + 
-                       *(in_im2+(i+len)*len) + *(in_im2+(i+len)*len+len);
+        gResistO3_2 += *(in_re2+(i+len)*len) + *(in_im2+(i+len)*len+len);
     }
 }
 
 void calc_kron_avx256_float(int32_t caseid, int32_t N)
 {   
-    float in_re1[MAX_SIZE] = {0};
-    float in_im1[MAX_SIZE] = {0};
-    float in_re2[MAX_SIZE] = {0};
-    float in_im2[MAX_SIZE] = {0};
+    float in_re1[MAX_SIZE * 2] = {0};
+    float in_im1[MAX_SIZE * 2] = {0};
+    float in_re2[MAX_SIZE * 2] = {0};
+    float in_im2[MAX_SIZE * 2] = {0};
 
     for (int32_t i=0;i<NUM_LOOP;i++)
     {
         int32_t ran = rand()%50;
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
-            in_re1[k] = k + i + ran;
+            in_re1[k] = k + i - ran;
             in_im1[k] = k + i + ran;
         }
         
@@ -294,17 +293,17 @@ void calc_kron_avx256_float(int32_t caseid, int32_t N)
 
 void calc_kron_avx256_double(int32_t caseid, int32_t N)
 {   
-    double in_re1_d[MAX_SIZE] = {0};
-    double in_im1_d[MAX_SIZE] = {0};
-    double in_re2_d[MAX_SIZE] = {0};
-    double in_im2_d[MAX_SIZE] = {0};
+    double in_re1_d[MAX_SIZE * 2] = {0};
+    double in_im1_d[MAX_SIZE * 2] = {0};
+    double in_re2_d[MAX_SIZE * 2] = {0};
+    double in_im2_d[MAX_SIZE * 2] = {0};
 
     for (int32_t i=0;i<NUM_LOOP;i++)
     {
         int32_t ran = rand()%50;
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
-            in_re1_d[k] = k + i + ran;
+            in_re1_d[k] = k + i - ran;
             in_im1_d[k] = k + i + ran;
         }
         
@@ -323,7 +322,7 @@ void calc_kron_avx256_double(int32_t caseid, int32_t N)
 void coma_avg(int32_t len, float* out_re,float* out_im,float* in_re1,float* in_im1,
                               float* in_re2,float* in_im2,float r1,float r2)
 {
-    int32_t loop = len*len / DATA256Float_LOOP;
+    int32_t loop = len*len / DATA256Float_LOOP * 2;
    
     for(int32_t i = 0; i < loop ; i++)
     {
@@ -340,7 +339,7 @@ void coma_avg(int32_t len, float* out_re,float* out_im,float* in_re1,float* in_i
 void coma_avg_double(int32_t len, double* out_re,double* out_im,double* in_re1,double* in_im1,
                                        double* in_re2,double* in_im2,double r1,double r2)
 {
-    int32_t loop = len*len / DATA256Double_LOOP;
+    int32_t loop = len*len / DATA256Double_LOOP * 2;
     for(int32_t i = 0; i < loop ; i++)
     {
         __m256d re = _mm256_add_pd(_mm256_mul_pd(_mm256_set1_pd(r1),_mm256_load_pd(in_re1 + i * DATA256Double_LOOP)),_mm256_mul_pd(_mm256_set1_pd(r2),_mm256_load_pd(in_re2 + i * DATA256Double_LOOP)));
@@ -369,9 +368,9 @@ void calc_coma_avg_avx256_float(int32_t caseid, int32_t N)
         int32_t ran = rand()%50;
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
-            in_re1[k] = k + i + ran;
+            in_re1[k] = k + i - ran;
             in_im1[k] = k + i + ran;
-            in_re2[k] = k + i + ran;
+            in_re2[k] = k + i - ran;
             in_im2[k] = k + i + ran;
         }
         
@@ -406,9 +405,9 @@ void calc_coma_avg_avx256_double(int32_t caseid, int32_t N)
         int32_t ran = rand()%50;
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
-            in_re1_d[k] = k + i + ran;
+            in_re1_d[k] = k + i - ran;
             in_im1_d[k] = k + i + ran;
-            in_re2_d[k] = k + i + ran;
+            in_re2_d[k] = k + i - ran;
             in_im2_d[k] = k + i + ran;
         }
         
@@ -2636,7 +2635,10 @@ int main(int argc, char *argv[])
     printf(" case start \n");
     printf("**************************************************************************************************************\n");
 
-    memset(gCycleCount, 0, sizeof(int32_t) * NUM_CASE * NUM_LOOP);
+    memset(gCycleCount, 0, sizeof(uint64_t) * NUM_CASE * NUM_LOOP);
+    
+    calc_cholesky_avx256_float(27, 64);//make rpl bzy to 2.5g
+    printf("**************************************************************************************************************\n");
     
     calc_coma_avx256_float(0, 4);
     calc_coma_avx256_float(1, 8);
@@ -2674,17 +2676,17 @@ int main(int argc, char *argv[])
     calc_coma_avg_avx256_double(23, 64);
     printf("**************************************************************************************************************\n");
 
-    calc_cholesky_avx256_float(24, 4);
+    /*calc_cholesky_avx256_float(24, 4);
     calc_cholesky_avx256_float(25, 8);
     calc_cholesky_avx256_float(26, 32);
-    calc_cholesky_avx256_float(27, 64);
+    calc_cholesky_avx256_float(27, 64);*/
     
     printf("**************************************************************************************************************\n");
 
-    calc_cholesky_avx256_double(28, 4);
+    /*calc_cholesky_avx256_double(28, 4);
     calc_cholesky_avx256_double(29, 8);
     calc_cholesky_avx256_double(30, 32);
-    calc_cholesky_avx256_double(31, 64);
+    calc_cholesky_avx256_double(31, 64);*/
 
     gResistO3_4 = gResistO3_1 - gResistO3_2 + gResistO3_3 - gResistO3_6;
     printf("**************************************************************************************************************\n");

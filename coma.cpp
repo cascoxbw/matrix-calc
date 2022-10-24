@@ -17,7 +17,7 @@ typedef unsigned long uint64_t;
 #define NUM_CASE            32
 #define NUM_LOOP            10000
 
-int32_t gCycleCount[NUM_CASE][NUM_LOOP];
+uint64_t gCycleCount[NUM_CASE][NUM_LOOP];
 double gResistO3[NUM_CASE][NUM_LOOP];
 double gResistO3_1 = 0;
 double gResistO3_2 = 0;
@@ -26,12 +26,12 @@ double gResistO3_4 = 0;
 
 void display(int32_t caseid)
 {
-    std::vector<int32_t> v0(gCycleCount[caseid],gCycleCount[caseid]+NUM_LOOP);
+    std::vector<uint64_t> v0(gCycleCount[caseid],gCycleCount[caseid]+NUM_LOOP);
     std::sort(v0.begin(), v0.end());
     
-    double sum = std::accumulate(v0.begin(), v0.end(), 0);  
-    double avg =  sum / v0.size(); 
-    if ((caseid == 31 || caseid == 27)&& NUM_LOOP >= 10000) 
+    uint64_t sum = std::accumulate(v0.begin(), v0.end(), 0);  
+    uint64_t avg =  sum / v0.size(); 
+    if ((caseid == 31 || caseid == 30 || caseid == 27 || caseid == 26)&& NUM_LOOP >= 10000) 
     {
         sum = 0;
         for (int32_t i = 0; i < v0.size(); i++)
@@ -45,7 +45,7 @@ void display(int32_t caseid)
     //auto minPosition = min_element(v0.begin(), v0.end());
     
     
-    printf(" case %d: cycle total=%d, loop num=%zu, cycle avg=%d, cycle 95=%d, cycle 99=%d, cycle 100=%d\n", caseid, (int32_t)sum, v0.size(), (int32_t)avg, v0[NUM_LOOP*0.95], v0[NUM_LOOP*0.99], v0[NUM_LOOP*0.999]);
+    printf(" case %d: cycle total=%lu, loop num=%zu, cycle avg=%lu, cycle 95=%lu, cycle 99=%lu, cycle 100=%lu\n", caseid, sum, v0.size(), avg, v0[NUM_LOOP*0.95], v0[NUM_LOOP*0.99], v0[NUM_LOOP*0.999]);
     //sleep(5);
 }
 
@@ -139,7 +139,7 @@ void calc_coma_avx512_float(int32_t caseid, int32_t N)
         int32_t ran = rand()%50;
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
-            in_re[k]  = k + i + ran;
+            in_re[k]  = k + i - ran;
             in_im[k]  = k + i + ran;
         }
         
@@ -166,7 +166,7 @@ void calc_coma_avx512_double(int32_t caseid, int32_t N)
         int32_t ran = rand()%50;
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
-            in_re_d[k]  = k + i + ran;
+            in_re_d[k]  = k + i - ran;
             in_im_d[k]  = k + i + ran;
         }
         
@@ -311,7 +311,7 @@ void calc_kron_avx512_float(int32_t caseid, int32_t N)
         int32_t ran = rand()%50;
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
-            in_re1[k] = k + i + ran;
+            in_re1[k] = k + i - ran;
             in_im1[k] = k + i + ran;
         }
         
@@ -339,7 +339,7 @@ void calc_kron_avx512_double(int32_t caseid, int32_t N)
         int32_t ran = rand()%50;
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
-            in_re1_d[k] = k + i + ran;
+            in_re1_d[k] = k + i - ran;
             in_im1_d[k] = k + i + ran;
         }
         
@@ -404,9 +404,9 @@ void calc_coma_avg_avx512_float(int32_t caseid, int32_t N)
         int32_t ran = rand()%50;
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
-            in_re1[k] = k + i + ran;
+            in_re1[k] = k + i - ran;
             in_im1[k] = k + i + ran;
-            in_re2[k] = k + i + ran;
+            in_re2[k] = k + i - ran;
             in_im2[k] = k + i + ran;
         }
         
@@ -441,9 +441,9 @@ void calc_coma_avg_avx512_double(int32_t caseid, int32_t N)
         int32_t ran = rand()%50;
         for (int32_t k=0;k<MAX_SIZE;k++)
         {
-            in_re1_d[k] = k + i + ran;
+            in_re1_d[k] = k + i - ran;
             in_im1_d[k] = k + i + ran;
-            in_re2_d[k] = k + i + ran;
+            in_re2_d[k] = k + i - ran;
             in_im2_d[k] = k + i + ran;
         }
         
@@ -2641,7 +2641,7 @@ int main(int argc, char *argv[])
     printf(" case start \n");
     printf("**************************************************************************************************************\n");
 
-    memset(gCycleCount, 0, sizeof(int32_t) * NUM_CASE * NUM_LOOP);
+    memset(gCycleCount, 0, sizeof(uint64_t) * NUM_CASE * NUM_LOOP);
     
     calc_coma_avx512_float(0, 4);
     calc_coma_avx512_float(1, 8);
