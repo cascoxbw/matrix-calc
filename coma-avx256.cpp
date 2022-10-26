@@ -6,6 +6,7 @@
 #include <numeric>      // std::accumulate
 #include <unistd.h>     // sleep
 
+#define __ALIGN64 __attribute__((aligned(64)))
 
 typedef int int32_t;
 typedef unsigned int uint32_t;
@@ -66,7 +67,7 @@ void vec_single_mul256_conj(float single_value_re,float single_value_im, float* 
     {
         int32_t loop = len / DATA256Float_LOOP;
         if (len < DATA256Float_LOOP) loop = 1;
-        for(int32_t i = 0; i < loop * 2; i++)
+        for(int32_t i = 0; i < loop; i++)
         {
             __m256 re = _mm256_add_ps(_mm256_mul_ps(single_vec_re,_mm256_load_ps(input_vec_re + i * DATA256Float_LOOP)),_mm256_mul_ps(single_vec_im,_mm256_load_ps(input_vec_im + i * DATA256Float_LOOP)));
             __m256 im = _mm256_sub_ps(_mm256_mul_ps(single_vec_re,_mm256_load_ps(input_vec_im + i * DATA256Float_LOOP)),_mm256_mul_ps(single_vec_im,_mm256_load_ps(input_vec_re + i * DATA256Float_LOOP)));
@@ -84,13 +85,14 @@ void vec_single_mul256_conj_double(double single_value_re,double single_value_im
     __m256d single_vec_im = _mm256_set1_pd(single_value_im);
     
     int32_t loop = len / DATA256Double_LOOP;
-    for(int32_t i = 0; i < loop * 2; i++)
+    for(int32_t i = 0; i < loop; i++)
     {
         __m256d re = _mm256_add_pd(_mm256_mul_pd(single_vec_re,_mm256_load_pd(input_vec_re + i * DATA256Double_LOOP)),_mm256_mul_pd(single_vec_im,_mm256_load_pd(input_vec_im + i * DATA256Double_LOOP)));
         __m256d im = _mm256_sub_pd(_mm256_mul_pd(single_vec_re,_mm256_load_pd(input_vec_im + i * DATA256Double_LOOP)),_mm256_mul_pd(single_vec_im,_mm256_load_pd(input_vec_re + i * DATA256Double_LOOP)));
         *(__m256d*)(output_vec_re + i * DATA256Double_LOOP) = re;
         *(__m256d*)(output_vec_im + i * DATA256Double_LOOP) = im;
         gResistO3_1 += *(output_vec_re+i*len) + *(output_vec_im+i*len);
+        //printf("len=%d,i=%d\n",len,i);
     }
 }
 
@@ -122,10 +124,10 @@ void coma_double(int32_t len, double* out_re,double* out_im,double* in_re,double
 
 void calc_coma_avx256_float(int32_t caseid, int32_t N)
 {   
-    float out_re[MAX_SIZE] = {0};
-    float out_im[MAX_SIZE] = {0};
-    float in_re[MAX_SIZE]  = {0};
-    float in_im[MAX_SIZE]  = {0};
+    __ALIGN64 float out_re[MAX_SIZE] = {0};
+    __ALIGN64 float out_im[MAX_SIZE] = {0};
+    __ALIGN64 float in_re[MAX_SIZE]  = {0};
+    __ALIGN64 float in_im[MAX_SIZE]  = {0};
 
     for (int32_t i=0;i<NUM_LOOP;i++)
     {
@@ -149,10 +151,10 @@ void calc_coma_avx256_float(int32_t caseid, int32_t N)
 
 void calc_coma_avx256_double(int32_t caseid, int32_t N)
 {   
-    double out_re_d[MAX_SIZE] = {0};
-    double out_im_d[MAX_SIZE] = {0};
-    double in_re_d[MAX_SIZE]  = {0};
-    double in_im_d[MAX_SIZE]  = {0};
+    __ALIGN64 double out_re_d[MAX_SIZE] = {0};
+    __ALIGN64 double out_im_d[MAX_SIZE] = {0};
+    __ALIGN64 double in_re_d[MAX_SIZE]  = {0};
+    __ALIGN64 double in_im_d[MAX_SIZE]  = {0};
 
     for (int32_t i=0;i<NUM_LOOP;i++)
     {
@@ -201,8 +203,8 @@ void kron(float* in_re1, float* in_im1,float* in_re2, float* in_im2, int32_t len
     }
     else*/
     {
-        int32_t loop = len/DATA256Float_LOOP * 2;
-        if (len < DATA256Float_LOOP) loop = 2;
+        int32_t loop = len/DATA256Float_LOOP;
+        if (len < DATA256Float_LOOP) loop = 1;
         for(int32_t i = 0; i < len; i++)
         {
             for(int32_t j = 0; j < loop; j++)
@@ -234,7 +236,7 @@ void kron(float* in_re1, float* in_im1,float* in_re2, float* in_im2, int32_t len
 
 void kron_double(double* in_re1, double* in_im1,double* in_re2, double* in_im2, int32_t len)
 {    
-    int32_t loop = len/DATA256Double_LOOP * 2;
+    int32_t loop = len/DATA256Double_LOOP;
         
     for(int32_t i = 0; i < len; i++)
     {
@@ -265,10 +267,10 @@ void kron_double(double* in_re1, double* in_im1,double* in_re2, double* in_im2, 
 
 void calc_kron_avx256_float(int32_t caseid, int32_t N)
 {   
-    float in_re1[MAX_SIZE * 2] = {0};
-    float in_im1[MAX_SIZE * 2] = {0};
-    float in_re2[MAX_SIZE * 2] = {0};
-    float in_im2[MAX_SIZE * 2] = {0};
+    __ALIGN64 float in_re1[MAX_SIZE] = {0};
+    __ALIGN64 float in_im1[MAX_SIZE] = {0};
+    __ALIGN64 float in_re2[MAX_SIZE] = {0};
+    __ALIGN64 float in_im2[MAX_SIZE] = {0};
 
     for (int32_t i=0;i<NUM_LOOP;i++)
     {
@@ -293,10 +295,10 @@ void calc_kron_avx256_float(int32_t caseid, int32_t N)
 
 void calc_kron_avx256_double(int32_t caseid, int32_t N)
 {   
-    double in_re1_d[MAX_SIZE * 2] = {0};
-    double in_im1_d[MAX_SIZE * 2] = {0};
-    double in_re2_d[MAX_SIZE * 2] = {0};
-    double in_im2_d[MAX_SIZE * 2] = {0};
+    __ALIGN64 double in_re1_d[MAX_SIZE] = {0};
+    __ALIGN64 double in_im1_d[MAX_SIZE] = {0};
+    __ALIGN64 double in_re2_d[MAX_SIZE] = {0};
+    __ALIGN64 double in_im2_d[MAX_SIZE] = {0};
 
     for (int32_t i=0;i<NUM_LOOP;i++)
     {
@@ -322,7 +324,7 @@ void calc_kron_avx256_double(int32_t caseid, int32_t N)
 void coma_avg(int32_t len, float* out_re,float* out_im,float* in_re1,float* in_im1,
                               float* in_re2,float* in_im2,float r1,float r2)
 {
-    int32_t loop = len*len / DATA256Float_LOOP * 2;
+    int32_t loop = len*len / DATA256Float_LOOP;
    
     for(int32_t i = 0; i < loop ; i++)
     {
@@ -339,7 +341,7 @@ void coma_avg(int32_t len, float* out_re,float* out_im,float* in_re1,float* in_i
 void coma_avg_double(int32_t len, double* out_re,double* out_im,double* in_re1,double* in_im1,
                                        double* in_re2,double* in_im2,double r1,double r2)
 {
-    int32_t loop = len*len / DATA256Double_LOOP * 2;
+    int32_t loop = len*len / DATA256Double_LOOP;
     for(int32_t i = 0; i < loop ; i++)
     {
         __m256d re = _mm256_add_pd(_mm256_mul_pd(_mm256_set1_pd(r1),_mm256_load_pd(in_re1 + i * DATA256Double_LOOP)),_mm256_mul_pd(_mm256_set1_pd(r2),_mm256_load_pd(in_re2 + i * DATA256Double_LOOP)));
@@ -354,12 +356,12 @@ void coma_avg_double(int32_t len, double* out_re,double* out_im,double* in_re1,d
                                        
 void calc_coma_avg_avx256_float(int32_t caseid, int32_t N)
 {   
-    float out_re[MAX_SIZE] = {0};
-    float out_im[MAX_SIZE] = {0};
-    float in_re1[MAX_SIZE] = {0};
-    float in_im1[MAX_SIZE] = {0};
-    float in_re2[MAX_SIZE] = {0};
-    float in_im2[MAX_SIZE] = {0};
+    __ALIGN64 float out_re[MAX_SIZE] = {0};
+    __ALIGN64 float out_im[MAX_SIZE] = {0};
+    __ALIGN64 float in_re1[MAX_SIZE] = {0};
+    __ALIGN64 float in_im1[MAX_SIZE] = {0};
+    __ALIGN64 float in_re2[MAX_SIZE] = {0};
+    __ALIGN64 float in_im2[MAX_SIZE] = {0};
     float r1 = 0;
     float r2 = 0;
     
@@ -391,12 +393,12 @@ void calc_coma_avg_avx256_float(int32_t caseid, int32_t N)
 
 void calc_coma_avg_avx256_double(int32_t caseid, int32_t N)
 {   
-    double out_re_d[MAX_SIZE] = {0};
-    double out_im_d[MAX_SIZE] = {0};
-    double in_re1_d[MAX_SIZE] = {0};
-    double in_im1_d[MAX_SIZE] = {0};
-    double in_re2_d[MAX_SIZE] = {0};
-    double in_im2_d[MAX_SIZE] = {0};
+    __ALIGN64 double out_re_d[MAX_SIZE] = {0};
+    __ALIGN64 double out_im_d[MAX_SIZE] = {0};
+    __ALIGN64 double in_re1_d[MAX_SIZE] = {0};
+    __ALIGN64 double in_im1_d[MAX_SIZE] = {0};
+    __ALIGN64 double in_re2_d[MAX_SIZE] = {0};
+    __ALIGN64 double in_im2_d[MAX_SIZE] = {0};
     double r1 = 0;
     double r2 = 0;
     
@@ -2497,8 +2499,8 @@ void matrix_inv_cholesky_64x64_double(__m256d matBRe[MAX_LEN][MAX_LEN][N_4], __m
 
 void calc_cholesky_avx256_float(int32_t caseid, int32_t N)
 {   
-    float in_re[MAX_SIZE] = {0};
-    float in_im[MAX_SIZE] = {0};
+    __ALIGN64 float in_re[MAX_SIZE] = {0};
+    __ALIGN64 float in_im[MAX_SIZE] = {0};
     
     for (int32_t i=0;i<NUM_LOOP;i++)
     {
@@ -2564,8 +2566,8 @@ void calc_cholesky_avx256_float(int32_t caseid, int32_t N)
 
 void calc_cholesky_avx256_double(int32_t caseid, int32_t N)
 {   
-    double in_re[MAX_SIZE] = {0};
-    double in_im[MAX_SIZE] = {0};
+    __ALIGN64 double in_re[MAX_SIZE] = {0};
+    __ALIGN64 double in_im[MAX_SIZE] = {0};
     
     for (int32_t i=0;i<NUM_LOOP;i++)
     {
