@@ -2678,18 +2678,18 @@ int main(int argc, char *argv[])
     calc_coma_avg_avx256_double(23, 64);
     printf("**************************************************************************************************************\n");
 
-    /*calc_cholesky_avx256_float(24, 4);
+    calc_cholesky_avx256_float(24, 4);
     calc_cholesky_avx256_float(25, 8);
     calc_cholesky_avx256_float(26, 32);
-    calc_cholesky_avx256_float(27, 64);*/
+    calc_cholesky_avx256_float(27, 64);
     
     printf("**************************************************************************************************************\n");
 
-    /*calc_cholesky_avx256_double(28, 4);
+    calc_cholesky_avx256_double(28, 4);
     calc_cholesky_avx256_double(29, 8);
     calc_cholesky_avx256_double(30, 32);
-    calc_cholesky_avx256_double(31, 64);*/
-
+    calc_cholesky_avx256_double(31, 64);
+        
     gResistO3_4 = gResistO3_1 - gResistO3_2 + gResistO3_3 - gResistO3_6;
     printf("**************************************************************************************************************\n");
     printf(" case end \n");

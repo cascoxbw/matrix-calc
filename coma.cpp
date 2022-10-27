@@ -138,6 +138,11 @@ void calc_coma_avx512_float(int32_t caseid, int32_t N)
     __ALIGN64 float out_im[MAX_SIZE] = {0};
     __ALIGN64 float in_re[MAX_SIZE]  = {0};
     __ALIGN64 float in_im[MAX_SIZE]  = {0};
+    
+    float out_re1[MAX_SIZE] = {0};
+    float out_im1[MAX_SIZE] = {0};
+    float in_re1[MAX_SIZE]  = {0};
+    float in_im1[MAX_SIZE]  = {0};
 
     for (int32_t i=0;i<NUM_LOOP;i++)
     {
@@ -146,10 +151,22 @@ void calc_coma_avx512_float(int32_t caseid, int32_t N)
         {
             in_re[k]  = k + i - ran;
             in_im[k]  = k + i + ran;
+            in_re1[k]  = k + i - ran;
+            in_im1[k]  = k + i + ran;
         }
         
         uint64_t t1 = __rdtsc();
-        coma(N,out_re,out_im,in_re,in_im);
+        switch(N)
+        {
+            case 4:
+            case 8:
+                coma(N,out_re1,out_im1,in_re1,in_im1);
+                break;
+            case 32:
+            case 64:
+                coma(N,out_re,out_im,in_re,in_im);
+                break;
+        }
         uint64_t t2 = __rdtsc();
         gCycleCount[caseid][i] = t2-t1;
 
