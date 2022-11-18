@@ -6,7 +6,7 @@
 #include <numeric>      // std::accumulate
 #include <unistd.h>     // sleep
 
-#define __ALIGN64 __attribute__((aligned(64)))
+#define __ALIGN64 /*__attribute__((aligned(64)))*/
 
 typedef int int32_t;
 typedef unsigned int uint32_t;
@@ -19,11 +19,7 @@ typedef unsigned long uint64_t;
 #define NUM_LOOP            10000
 
 uint64_t gCycleCount[NUM_CASE][NUM_LOOP];
-double gResistO3[NUM_CASE][NUM_LOOP];
-double gResistO3_1 = 0;
-double gResistO3_2 = 0;
-double gResistO3_3 = 0;
-double gResistO3_4 = 0;
+double gResistO3[NUM_LOOP][NUM_LOOP];
 
 void display(int32_t caseid)
 {
@@ -100,8 +96,6 @@ void vec_single_mul512_conj_double(double single_value_re,double single_value_im
             __m512d im = _mm512_sub_pd(_mm512_mul_pd(single_vec_re,_mm512_load_pd(input_vec_im + i * DATA512Double_LOOP)),_mm512_mul_pd(single_vec_im,_mm512_load_pd(input_vec_re + i * DATA512Double_LOOP)));
             *(__m512d*)(output_vec_re + i * DATA512Double_LOOP) = re;
             *(__m512d*)(output_vec_im + i * DATA512Double_LOOP) = im;
-            
-            //printf("len=%d,i=%d\n",len,i);
         }
     }
 }
@@ -115,7 +109,7 @@ void coma(int32_t len, float* out_re,float* out_im,float* in_re,float* in_im)
     for(int32_t i = 0; i < len; i++)
     {
         vec_single_mul512_conj(*(re+i),*(im+i),re,im,coma_re+i*len,coma_im+i*len,len);
-        gResistO3_1 += *(coma_re+i*len) + *(coma_im+i*len);
+        //gResistO3[i][i] = *(coma_re+i*len) + *(coma_im+i*len);
     }
 }
 
@@ -128,7 +122,7 @@ void coma_double(int32_t len, double* out_re,double* out_im,double* in_re,double
     for(int32_t i = 0; i < len; i++)
     {
         vec_single_mul512_conj_double(*(re+i),*(im+i),re,im,coma_re+i*len,coma_im+i*len,len);
-        gResistO3_1 += *(coma_re+i*len) + *(coma_im+i*len);
+        //gResistO3[i][i] = *(coma_re+i*len) + *(coma_im+i*len);
     }
 }
 
@@ -139,11 +133,6 @@ void calc_coma_avx512_float(int32_t caseid, int32_t N)
     __ALIGN64 float in_re[MAX_SIZE]  = {0};
     __ALIGN64 float in_im[MAX_SIZE]  = {0};
     
-    float out_re1[MAX_SIZE] = {0};
-    float out_im1[MAX_SIZE] = {0};
-    float in_re1[MAX_SIZE]  = {0};
-    float in_im1[MAX_SIZE]  = {0};
-
     for (int32_t i=0;i<NUM_LOOP;i++)
     {
         int32_t ran = rand()%50;
@@ -151,22 +140,10 @@ void calc_coma_avx512_float(int32_t caseid, int32_t N)
         {
             in_re[k]  = k + i - ran;
             in_im[k]  = k + i + ran;
-            in_re1[k]  = k + i - ran;
-            in_im1[k]  = k + i + ran;
         }
         
         uint64_t t1 = __rdtsc();
-        switch(N)
-        {
-            case 4:
-            case 8:
-                coma(N,out_re1,out_im1,in_re1,in_im1);
-                break;
-            case 32:
-            case 64:
-                coma(N,out_re,out_im,in_re,in_im);
-                break;
-        }
+        coma(N,out_re,out_im,in_re,in_im);
         uint64_t t2 = __rdtsc();
         gCycleCount[caseid][i] = t2-t1;
 
@@ -242,10 +219,10 @@ void kron(float* in_re1, float* in_im1,float* in_re2, float* in_im2, int32_t len
             *(__m512*)(in_im2+i*len*2+j*DATA512Float_LOOP) = _mm512_load_ps(in_im1+i*len+j*DATA512Float_LOOP);
             for(int32_t j = 0; j < loop; j++)
             *(__m512*)(in_im2+i*len*2+j*DATA512Float_LOOP+len) = _mm512_setzero_ps();
-            gResistO3_2 += *(in_re2+i*len) + *(in_re2+i*len+len) + 
-                           *(in_im2+i*len) + *(in_im2+i*len+len);
         }
          
+        //gResistO3[loop][loop] = *(in_re2+loop*len) + *(in_im2+loop*len);
+        
         for(int32_t i = 0; i < len; i++)
         {
             for(int32_t j = 0; j < loop; j++)
@@ -256,9 +233,8 @@ void kron(float* in_re1, float* in_im1,float* in_re2, float* in_im2, int32_t len
             *(__m512*)(in_im2+(i+len)*len*2+j*DATA512Float_LOOP) = _mm512_setzero_ps();
             for(int32_t j = 0; j < loop; j++)
             *(__m512*)(in_im2+(i+len)*len*2+j*DATA512Float_LOOP+len) = _mm512_load_ps(in_im1+i*len+j*DATA512Float_LOOP);
-            gResistO3_2 += *(in_re2+(i+len)*len) + *(in_re2+(i+len)*len+len) + 
-                           *(in_im2+(i+len)*len) + *(in_im2+(i+len)*len+len);
         }
+        //gResistO3[loop][loop] = *(in_re2+loop*len) + *(in_im2+loop*len);
                 
     }
 }
@@ -301,9 +277,8 @@ void kron_double(double* in_re1, double* in_im1,double* in_re2, double* in_im2, 
             *(__m512d*)(in_im2+i*len*2+j*DATA512Double_LOOP) = _mm512_load_pd(in_im1+i*len+j*DATA512Double_LOOP);
             for(int32_t j = 0; j < loop; j++)
             *(__m512d*)(in_im2+i*len*2+j*DATA512Double_LOOP+len) = _mm512_setzero_pd();
-            gResistO3_2 += *(in_re2+i*len) + *(in_re2+i*len+len) + 
-                           *(in_im2+i*len) + *(in_im2+i*len+len);
         }
+        //gResistO3[loop][loop] = *(in_re2+loop*len) + *(in_im2+loop*len);
          
         for(int32_t i = 0; i < len; i++)
         {
@@ -315,9 +290,9 @@ void kron_double(double* in_re1, double* in_im1,double* in_re2, double* in_im2, 
             *(__m512d*)(in_im2+(i+len)*len*2+j*DATA512Double_LOOP) = _mm512_setzero_pd();
             for(int32_t j = 0; j < loop; j++)
             *(__m512d*)(in_im2+(i+len)*len*2+j*DATA512Double_LOOP+len) = _mm512_load_pd(in_im1+i*len+j*DATA512Double_LOOP);
-            gResistO3_2 += *(in_re2+(i+len)*len) + *(in_re2+(i+len)*len+len) + 
-                           *(in_im2+(i+len)*len) + *(in_im2+(i+len)*len+len);
         }
+        
+        //gResistO3[loop][loop] = *(in_re2+loop*len) + *(in_im2+loop*len);
     }
 }
 
@@ -388,10 +363,9 @@ void coma_avg(int32_t len, float* out_re,float* out_im,float* in_re1,float* in_i
         __m512 im = _mm512_add_ps(_mm512_mul_ps(_mm512_set1_ps(r1),_mm512_load_ps(in_im1 + i * DATA512Float_LOOP)),_mm512_mul_ps(_mm512_set1_ps(r2),_mm512_load_ps(in_im2 + i * DATA512Float_LOOP)));
         *(__m512*)(out_re + i * DATA512Float_LOOP) = re;
         *(__m512*)(out_im + i * DATA512Float_LOOP) = im;
-        gResistO3_3 += *(in_re1 + i * DATA512Float_LOOP) + *(in_im1 + i * DATA512Float_LOOP) + 
-                       *(in_re2 + i * DATA512Float_LOOP) + *(in_im2 + i * DATA512Float_LOOP) + 
-                       *(out_re + i * DATA512Float_LOOP) + *(out_im + i * DATA512Float_LOOP);
     }
+    
+    //gResistO3[loop][loop] = *(out_re + loop) + *(out_im + loop);
 }
                               
 void coma_avg_double(int32_t len, double* out_re,double* out_im,double* in_re1,double* in_im1,
@@ -404,10 +378,9 @@ void coma_avg_double(int32_t len, double* out_re,double* out_im,double* in_re1,d
         __m512d im = _mm512_add_pd(_mm512_mul_pd(_mm512_set1_pd(r1),_mm512_load_pd(in_im1 + i * DATA512Double_LOOP)),_mm512_mul_pd(_mm512_set1_pd(r2),_mm512_load_pd(in_im2 + i * DATA512Double_LOOP)));
         *(__m512d*)(out_re + i * DATA512Double_LOOP) = re;
         *(__m512d*)(out_im + i * DATA512Double_LOOP) = im;
-        gResistO3_3 += *(in_re1 + i * DATA512Double_LOOP) + *(in_im1 + i * DATA512Double_LOOP) + 
-                       *(in_re2 + i * DATA512Double_LOOP) + *(in_im2 + i * DATA512Double_LOOP) + 
-                       *(out_re + i * DATA512Double_LOOP) + *(out_im + i * DATA512Double_LOOP);
     }
+    
+    //gResistO3[loop][loop] = *(out_re + loop) + *(out_im + loop);
 }
                                        
 void calc_coma_avg_avx512_float(int32_t caseid, int32_t N)
@@ -1208,7 +1181,7 @@ static __m512 constZero = _mm512_setzero_ps();
 #define N_32 32
 #define N_64 64
 #define MAX_LEN            N_64
-__m512 gResistO3_5;
+double gResistO3_5;
 double gResistO3_6 = 0;
 
 void matrix_inv_cholesky_4x4(__m512 matBRe[MAX_LEN][MAX_LEN], __m512 matBIm[MAX_LEN][MAX_LEN],
@@ -1293,17 +1266,18 @@ void matrix_inv_cholesky_4x4(__m512 matBRe[MAX_LEN][MAX_LEN], __m512 matBIm[MAX_
         }
     }
     
-    gResistO3_5 = _mm512_add_ps(gResistO3_5,_mm512_sub_ps(matInvBRe[0][0], matInvBIm[0][0]));
+    __m512 rt = _mm512_sub_ps(matInvBRe[0][0], matInvBIm[0][0]);
+    gResistO3_5 += *((double *)&rt);
 }
 
-void matrix_inv_cholesky_4x4_double(__m512 matBRe[MAX_LEN][MAX_LEN][2], __m512 matBIm[MAX_LEN][MAX_LEN][2],
-    __m512 matInvBRe[MAX_LEN][MAX_LEN][2], __m512 matInvBIm[MAX_LEN][MAX_LEN][2])
+void matrix_inv_cholesky_4x4_double(__m512d matBRe[MAX_LEN][MAX_LEN][2], __m512d matBIm[MAX_LEN][MAX_LEN][2],
+    __m512d matInvBRe[MAX_LEN][MAX_LEN][2], __m512d matInvBIm[MAX_LEN][MAX_LEN][2])
 {
     // temp matrix and variables for matrix inversion
-    __m512 matGRe[N_4][N_4][2], matGIm[N_4][N_4][2];
-    __m512 matLRe[N_4][N_4][2], matLIm[N_4][N_4][2];
-    __m512 matD[N_4][2], matND[N_4][2];
-    __m512 temp0[2], temp1[2], temp2[2];
+    __m512d matGRe[N_4][N_4][2], matGIm[N_4][N_4][2];
+    __m512d matLRe[N_4][N_4][2], matLIm[N_4][N_4][2];
+    __m512d matD[N_4][2], matND[N_4][2];
+    __m512d temp0[2], temp1[2], temp2[2];
     int32_t i, j, k;
 
     /////////////////////////////////// get G, B = G*G', G is a lower triangular matrix
@@ -1401,7 +1375,8 @@ void matrix_inv_cholesky_4x4_double(__m512 matBRe[MAX_LEN][MAX_LEN][2], __m512 m
         }
     }
     
-    gResistO3_5 = _mm512_add_pd(gResistO3_5,_mm512_sub_pd(matInvBRe[0][0][0], matInvBIm[0][0][0]));
+    __m512d rt = _mm512_sub_pd(matInvBRe[0][0][0], matInvBIm[0][0][0]);
+    gResistO3_5 += *((double *)&rt);
 }
 
 void matrix_inv_cholesky_8x8(__m512 matBRe[MAX_LEN][MAX_LEN], __m512 matBIm[MAX_LEN][MAX_LEN],
@@ -1554,18 +1529,17 @@ void matrix_inv_cholesky_8x8(__m512 matBRe[MAX_LEN][MAX_LEN], __m512 matBIm[MAX_
         }
     }
     
-    gResistO3_5 = _mm512_add_ps(gResistO3_5,_mm512_sub_ps(matInvBRe[0][0], matInvBIm[0][0]));
-       
-    
+    __m512 rt = _mm512_sub_ps(matInvBRe[0][0], matInvBIm[0][0]);
+    gResistO3_5 += *((double *)&rt);
 }
-void matrix_inv_cholesky_8x8_double(__m512 matBRe[MAX_LEN][MAX_LEN][2], __m512 matBIm[MAX_LEN][MAX_LEN][2],
-    __m512 matInvBRe[MAX_LEN][MAX_LEN][2], __m512 matInvBIm[MAX_LEN][MAX_LEN][2])
+void matrix_inv_cholesky_8x8_double(__m512d matBRe[MAX_LEN][MAX_LEN][2], __m512d matBIm[MAX_LEN][MAX_LEN][2],
+    __m512d matInvBRe[MAX_LEN][MAX_LEN][2], __m512d matInvBIm[MAX_LEN][MAX_LEN][2])
 {
     // temp matrix and variables for matrix inversion
-    __m512 matGRe[N_8][N_8][2], matGIm[N_8][N_8][2];
-    __m512 matLRe[N_8][N_8][2], matLIm[N_8][N_8][2];
-    __m512 matD[N_8][2], matND[N_8][2];
-    __m512 temp0[2], temp1[2], temp2[2];
+    __m512d matGRe[N_8][N_8][2], matGIm[N_8][N_8][2];
+    __m512d matLRe[N_8][N_8][2], matLIm[N_8][N_8][2];
+    __m512d matD[N_8][2], matND[N_8][2];
+    __m512d temp0[2], temp1[2], temp2[2];
     int32_t i, j, k;
 
     /////////////////////////////////// get G, B = G*G', G is a lower triangular matrix
@@ -1730,9 +1704,8 @@ void matrix_inv_cholesky_8x8_double(__m512 matBRe[MAX_LEN][MAX_LEN][2], __m512 m
         }
     }
     
-    gResistO3_5 = _mm512_add_pd(gResistO3_5,_mm512_sub_pd(matInvBRe[0][0][0], matInvBIm[0][0][0]));
-       
-    
+    __m512d rt = _mm512_sub_pd(matInvBRe[0][0][0], matInvBIm[0][0][0]);
+    gResistO3_5 += *((double *)&rt);
 }
     
 void matrix_inv_cholesky_32x32(__m512 matBRe[MAX_LEN][MAX_LEN], __m512 matBIm[MAX_LEN][MAX_LEN],
@@ -2002,17 +1975,18 @@ void matrix_inv_cholesky_32x32(__m512 matBRe[MAX_LEN][MAX_LEN], __m512 matBIm[MA
         }
     }
     
-    gResistO3_5 = _mm512_add_ps(gResistO3_5,_mm512_sub_ps(matInvBRe[0][0], matInvBIm[0][0]));
+    __m512 rt = _mm512_sub_ps(matInvBRe[0][0], matInvBIm[0][0]);
+    gResistO3_5 += *((double *)&rt);
 }
 
-void matrix_inv_cholesky_32x32_double(__m512 matBRe[MAX_LEN][MAX_LEN][2], __m512 matBIm[MAX_LEN][MAX_LEN][2],
-    __m512 matInvBRe[MAX_LEN][MAX_LEN][2], __m512 matInvBIm[MAX_LEN][MAX_LEN][2])
+void matrix_inv_cholesky_32x32_double(__m512d matBRe[MAX_LEN][MAX_LEN][2], __m512d matBIm[MAX_LEN][MAX_LEN][2],
+    __m512d matInvBRe[MAX_LEN][MAX_LEN][2], __m512d matInvBIm[MAX_LEN][MAX_LEN][2])
 {
     // temp matrix and variables for matrix inversion
-    __m512 matGRe[N_32][N_32][2], matGIm[N_32][N_32][2];
-    __m512 matLRe[N_32][N_32][2], matLIm[N_32][N_32][2];
-    __m512 matD[N_32][2], matND[N_32][2];
-    __m512 temp0[2], temp1[2], temp2[2];
+    __m512d matGRe[N_32][N_32][2], matGIm[N_32][N_32][2];
+    __m512d matLRe[N_32][N_32][2], matLIm[N_32][N_32][2];
+    __m512d matD[N_32][2], matND[N_32][2];
+    __m512d temp0[2], temp1[2], temp2[2];
     int32_t i, j, k;
 
     /////////////////////////////////// get G, B = G*G', G is a lower triangular matrix
@@ -2294,7 +2268,8 @@ void matrix_inv_cholesky_32x32_double(__m512 matBRe[MAX_LEN][MAX_LEN][2], __m512
         }
     }
     
-    gResistO3_5 = _mm512_add_pd(gResistO3_5,_mm512_sub_pd(matInvBRe[0][0][0], matInvBIm[0][0][0]));
+    __m512d rt = _mm512_sub_pd(matInvBRe[0][0][0], matInvBIm[0][0][0]);
+    gResistO3_5 += *((double *)&rt);
 }
     
 void matrix_inv_cholesky_64x64(__m512 matBRe[MAX_LEN][MAX_LEN], __m512 matBIm[MAX_LEN][MAX_LEN],
@@ -2398,17 +2373,18 @@ void matrix_inv_cholesky_64x64(__m512 matBRe[MAX_LEN][MAX_LEN], __m512 matBIm[MA
         }
     }
     
-    gResistO3_5 = _mm512_add_ps(gResistO3_5,_mm512_sub_ps(matInvBRe[0][0], matInvBIm[0][0]));
+    __m512 rt = _mm512_sub_ps(matInvBRe[0][0], matInvBIm[0][0]);
+    gResistO3_5 += *((double *)&rt);
 }
 
-void matrix_inv_cholesky_64x64_double(__m512 matBRe[MAX_LEN][MAX_LEN][2], __m512 matBIm[MAX_LEN][MAX_LEN][2],
-    __m512 matInvBRe[MAX_LEN][MAX_LEN][2], __m512 matInvBIm[MAX_LEN][MAX_LEN][2])
+void matrix_inv_cholesky_64x64_double(__m512d matBRe[MAX_LEN][MAX_LEN][2], __m512d matBIm[MAX_LEN][MAX_LEN][2],
+    __m512d matInvBRe[MAX_LEN][MAX_LEN][2], __m512d matInvBIm[MAX_LEN][MAX_LEN][2])
 {
     // temp matrix and variables for matrix inversion
-    __m512 matGRe[N_64][N_64][2], matGIm[N_64][N_64][2];
-    __m512 matLRe[N_64][N_64][2], matLIm[N_64][N_64][2];
-    __m512 matD[N_64][2], matND[N_64][2];
-    __m512 temp0[2], temp1[2], temp2[2];
+    __m512d matGRe[N_64][N_64][2], matGIm[N_64][N_64][2];
+    __m512d matLRe[N_64][N_64][2], matLIm[N_64][N_64][2];
+    __m512d matD[N_64][2], matND[N_64][2];
+    __m512d temp0[2], temp1[2], temp2[2];
     int32_t i, j, k;
 
     /////////////////////////////////// get G, B = G*G', G is a lower triangular matrix
@@ -2524,7 +2500,8 @@ void matrix_inv_cholesky_64x64_double(__m512 matBRe[MAX_LEN][MAX_LEN][2], __m512
         }
     }
     
-    gResistO3_5 = _mm512_add_pd(gResistO3_5,_mm512_sub_pd(matInvBRe[0][0][0], matInvBIm[0][0][0]));
+    __m512d rt = _mm512_sub_pd(matInvBRe[0][0][0], matInvBIm[0][0][0]);
+    gResistO3_5 += *((double *)&rt);
 }
 
 void calc_cholesky_avx512_float(int32_t caseid, int32_t N)
@@ -2582,7 +2559,7 @@ void calc_cholesky_avx512_float(int32_t caseid, int32_t N)
         uint64_t t2 = __rdtsc();
         gCycleCount[caseid][i] = t2-t1;
         
-        gResistO3_6 += _mm512_reduce_add_ps(gResistO3_5);
+        //gResistO3_6 += gResistO3_5;
         
     }
 
@@ -2605,10 +2582,10 @@ void calc_cholesky_avx512_double(int32_t caseid, int32_t N)
             in_im[k] = k + i + ran;
         }
         
-        __m512 matBRe[MAX_LEN][MAX_LEN][2];
-        __m512 matBIm[MAX_LEN][MAX_LEN][2];
-        __m512 matInvBRe[MAX_LEN][MAX_LEN][2];
-        __m512 matInvBIm[MAX_LEN][MAX_LEN][2];
+        __m512d matBRe[MAX_LEN][MAX_LEN][2];
+        __m512d matBIm[MAX_LEN][MAX_LEN][2];
+        __m512d matInvBRe[MAX_LEN][MAX_LEN][2];
+        __m512d matInvBIm[MAX_LEN][MAX_LEN][2];
         
         for (int32_t i=0;i<MAX_LEN;i++)
         {
@@ -2648,7 +2625,7 @@ void calc_cholesky_avx512_double(int32_t caseid, int32_t N)
         uint64_t t2 = __rdtsc();
         gCycleCount[caseid][i] = t2-t1;
 
-        gResistO3_6 += _mm512_reduce_add_pd(gResistO3_5);
+        //gResistO3_6 += gResistO3_5;
         
     }
 
@@ -2713,10 +2690,9 @@ int main(int argc, char *argv[])
     calc_cholesky_avx512_double(30, 32);
     calc_cholesky_avx512_double(31, 64);
 
-    gResistO3_4 = gResistO3_1 - gResistO3_2 + gResistO3_3 - gResistO3_6;
     printf("**************************************************************************************************************\n");
     printf(" case end \n");
-    printf("**************************************************************************************************************%f\n",gResistO3_4);
+    printf("**************************************************************************************************************%f\n",gResistO3_6);
 
     return 0;
 }
